@@ -1,7 +1,7 @@
 const AI_MODELS = {
     gemini: {
         name: 'Gemini',
-        icon: 'gemini',
+        icon: 'assets/icons/gemini.png',
         apiKeyPlaceholder: 'Enter your Google AI API Key',
         models: [
             { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
@@ -15,7 +15,7 @@ const AI_MODELS = {
     },
     claude: {
         name: 'Claude',
-        icon: 'claude',
+        icon: 'assets/icons/claude.png',
         apiKeyPlaceholder: 'Enter your Anthropic API Key',
         models: [
             { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
@@ -29,7 +29,7 @@ const AI_MODELS = {
     },
     openai: {
         name: 'OpenAI',
-        icon: 'openai',
+        icon: 'assets/icons/openai.png',
         apiKeyPlaceholder: 'Enter your OpenAI API Key',
         models: [
             { id: 'gpt-4o', name: 'GPT-4o' },
@@ -43,7 +43,7 @@ const AI_MODELS = {
     },
     deepseek: {
         name: 'DeepSeek',
-        icon: 'deepseek',
+        icon: 'assets/icons/deepseek.png',
         apiKeyPlaceholder: 'Enter your DeepSeek API Key',
         models: [
             { id: 'deepseek-chat', name: 'DeepSeek Chat' },
@@ -55,7 +55,7 @@ const AI_MODELS = {
     },
     openrouter: {
         name: 'OpenRouter',
-        icon: 'openrouter',
+        icon: 'assets/icons/openrouter.svg',
         apiKeyPlaceholder: 'Enter your OpenRouter API Key',
         models: [
             { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OpenRouter)' },
@@ -70,7 +70,7 @@ const AI_MODELS = {
     },
     grok: {
         name: 'Grok',
-        icon: 'grok',
+        icon: 'assets/icons/grok.svg',
         apiKeyPlaceholder: 'Enter your xAI API Key',
         models: [
             { id: 'grok-2-1212', name: 'Grok-2' },
