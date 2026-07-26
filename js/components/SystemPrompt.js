@@ -2,106 +2,118 @@ const SystemPrompt = {
     emits: ['navigate'],
     template: `
         <div class="system-prompt-page">
-            <nav class="navbar">
-                <div class="navbar-brand">
-                    <i class="bi bi-chat-left-text"></i> System Prompts
-                </div>
-                <div class="nav-links">
-                    <a class="nav-link" @click="$emit('navigate', 'main')">
-                        <i class="bi bi-grid"></i> Home
-                    </a>
-                    <a class="nav-link" @click="$emit('navigate', 'api')">
-                        <i class="bi bi-key"></i> API Config
-                    </a>
-                    <a class="nav-link active" @click="$emit('navigate', 'prompt')">
-                        <i class="bi bi-chat-left-text"></i> Prompts
-                    </a>
-                    <a class="nav-link" @click="$emit('navigate', 'bots')">
-                        <i class="bi bi-list-ul"></i> My Bots
-                    </a>
-                    <a class="nav-link" @click="$emit('navigate', 'about')">
-                        <i class="bi bi-info-circle"></i> About
-                    </a>
-                </div>
-            </nav>
+            <div class="page-header">
+                <button class="back-btn" @click="$emit('navigate', 'api')">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <h1 class="page-title">
+                    <i class="bi bi-chat-left-text"></i> System Prompt
+                </h1>
+            </div>
 
-            <div class="container mt-3">
-                <h3 class="mb-3">System Prompt Templates</h3>
-                
+            <!-- Template Selection -->
+            <div class="section">
+                <h2 class="section-title">
+                    <i class="bi bi-stars"></i> Choose Template
+                </h2>
                 <div class="template-grid">
                     <div 
                         v-for="(template, key) in templates" 
                         :key="key"
-                        class="card template-card"
-                        @click="selectTemplate(key)"
+                        class="template-card"
+                        :class="{ selected: selectedTemplate === key }"
+                        @click="useTemplate(key)"
                     >
-                        <div class="card-body">
-                            <h5>{{ template.name }}</h5>
-                            <p class="text-muted">{{ template.description }}</p>
-                            <button class="btn btn-sm btn-outline">
-                                <i class="bi bi-use"></i> Use Template
-                            </button>
+                        <div class="template-icon">
+                            <i :class="template.icon"></i>
+                        </div>
+                        <div class="template-info">
+                            <h3>{{ template.name }}</h3>
+                            <p>{{ template.description }}</p>
+                        </div>
+                        <div class="template-check" v-if="selectedTemplate === key">
+                            <i class="bi bi-check-circle-fill"></i>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="card mt-3">
-                    <div class="card-header d-flex align-items-center justify-content-between">
-                        <span>Custom Prompt Editor</span>
-                        <button class="btn btn-sm btn-primary" @click="saveCustomPrompt">
-                            <i class="bi bi-save"></i> Save
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">Prompt Name</label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                v-model="customPromptName"
-                                placeholder="Enter a name for your prompt"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">System Prompt</label>
-                            <textarea 
-                                class="form-control" 
-                                v-model="customPromptText"
-                                placeholder="Enter your custom system prompt here..."
-                                rows="8"
-                            ></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Variables</label>
-                            <p class="text-muted small">
-                                Available variables: {{ '{{user_name}}' }}, {{ '{{user_id}}' }}, {{ '{{chat_id}}' }}, {{ '{{bot_name}}' }}
-                            </p>
-                        </div>
+            <!-- Custom Prompt Editor -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="bi bi-pen"></i> Custom Prompt
+                    </h2>
+                    <button class="btn btn-sm btn-outline" @click="clearPrompt">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                </div>
+                <div class="editor-card">
+                    <textarea 
+                        class="prompt-textarea"
+                        v-model="systemPrompt"
+                        placeholder="Write your custom system prompt here..."
+                        rows="10"
+                    ></textarea>
+                    <div class="editor-footer">
+                        <span class="char-count">{{ systemPrompt.length }} characters</span>
+                        <span class="token-estimate">~{{ Math.ceil(systemPrompt.length / 4) }} tokens</span>
                     </div>
                 </div>
+            </div>
 
-                <h4 class="mt-3 mb-3">Saved Prompts</h4>
-                <div v-if="savedPromptsList.length === 0" class="text-muted text-center p-3">
-                    No custom prompts saved yet.
+            <!-- Preview -->
+            <div class="section" v-if="systemPrompt">
+                <h2 class="section-title">
+                    <i class="bi bi-eye"></i> Preview
+                </h2>
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <i class="bi bi-robot"></i> Bot Response Preview
+                    </div>
+                    <div class="preview-content">
+                        {{ previewText }}
+                    </div>
                 </div>
-                <div v-else class="saved-prompts">
-                    <div 
-                        v-for="(prompt, name) in savedPromptsList" 
-                        :key="name"
-                        class="card mb-2"
-                    >
-                        <div class="card-body d-flex align-items-center justify-content-between">
-                            <div>
-                                <strong>{{ name }}</strong>
-                                <p class="text-muted mb-0 small">{{ prompt.substring(0, 100) }}...</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-bar">
+                <button class="btn btn-secondary" @click="$emit('navigate', 'api')">
+                    <i class="bi bi-arrow-left"></i> Back
+                </button>
+                <button class="btn btn-primary btn-lg" @click="runBot" :disabled="!systemPrompt">
+                    <i class="bi bi-play-fill"></i> Run Bot
+                </button>
+            </div>
+
+            <!-- Run Animation Modal -->
+            <div class="modal-overlay" v-if="showAnimation" @click.self="closeAnimation">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>
+                            <i class="bi bi-gear fa-spin"></i> Running Bot...
+                        </h3>
+                    </div>
+                    <div class="animation-steps">
+                        <div 
+                            v-for="(step, index) in animationSteps" 
+                            :key="index"
+                            class="animation-step"
+                            :class="{ active: currentStep === index, completed: currentStep > index }"
+                        >
+                            <div class="step-indicator">
+                                <i v-if="currentStep > index" class="bi bi-check-circle-fill"></i>
+                                <i v-else-if="currentStep === index" class="bi bi-arrow-right-circle-fill"></i>
+                                <i v-else class="bi bi-circle"></i>
                             </div>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline" @click="loadPrompt(name)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger" @click="deletePrompt(name)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                            <div class="step-content">
+                                <div class="step-title">{{ step.title }}</div>
+                                <div class="step-detail" v-if="currentStep === index">
+                                    <div class="loading-dots">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -111,62 +123,73 @@ const SystemPrompt = {
     `,
     setup(props, { emit }) {
         const storage = useStorage();
-
         const templates = SYSTEM_PROMPT_TEMPLATES;
-        const customPromptName = ref('');
-        const customPromptText = ref('');
-        const savedPromptsList = ref({});
+        const selectedTemplate = ref(null);
+        const systemPrompt = ref('');
+        const showAnimation = ref(false);
+        const currentStep = ref(0);
+        const animationSteps = [
+            { title: 'Validating API Key' },
+            { title: 'Testing Model Connection' },
+            { title: 'Verifying Bot Token' },
+            { title: 'Creating Bot Configuration' },
+            { title: 'Success! Bot Created' }
+        ];
 
-        const loadSavedPrompts = () => {
-            savedPromptsList.value = storage.getSystemPrompts();
+        const useTemplate = (key) => {
+            selectedTemplate.value = key;
+            systemPrompt.value = templates[key].template;
         };
 
-        const selectTemplate = (key) => {
-            const template = templates[key];
-            customPromptName.value = template.name;
-            customPromptText.value = template.template;
+        const clearPrompt = () => {
+            selectedTemplate.value = null;
+            systemPrompt.value = '';
         };
 
-        const saveCustomPrompt = () => {
-            if (!customPromptName.value.trim() || !customPromptText.value.trim()) {
-                alert('Please enter both a name and prompt text.');
-                return;
+        const previewText = computed(() => {
+            if (!systemPrompt.value) return '';
+            return "Hello! I'm your AI-powered Telegram bot. I can help you with various tasks using advanced artificial intelligence. How can I assist you today?";
+        });
+
+        const runBot = async () => {
+            showAnimation.value = true;
+            currentStep.value = 0;
+
+            for (let i = 0; i < animationSteps.length; i++) {
+                currentStep.value = i;
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            storage.addSystemPrompt(customPromptName.value.trim(), customPromptText.value.trim());
-            loadSavedPrompts();
-            alert('Prompt saved successfully!');
-        };
 
-        const loadPrompt = (name) => {
-            const prompts = storage.getSystemPrompts();
-            if (prompts[name]) {
-                customPromptName.value = name;
-                customPromptText.value = prompts[name];
-            }
-        };
-
-        const deletePrompt = (name) => {
-            if (confirm(`Are you sure you want to delete "${name}"?`)) {
-                storage.deleteSystemPrompt(name);
-                loadSavedPrompts();
-                if (customPromptName.value === name) {
-                    customPromptName.value = '';
-                    customPromptText.value = '';
+            // Save configuration
+            const config = storage.getApiConfig();
+            if (config) {
+                for (const key in config) {
+                    config[key].systemPrompt = systemPrompt.value;
                 }
+                storage.saveApiConfig(config);
             }
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+            showAnimation.value = false;
+            emit('navigate', 'bots');
         };
 
-        loadSavedPrompts();
+        const closeAnimation = () => {
+            showAnimation.value = false;
+        };
 
         return {
             templates,
-            customPromptName,
-            customPromptText,
-            savedPromptsList,
-            selectTemplate,
-            saveCustomPrompt,
-            loadPrompt,
-            deletePrompt
+            selectedTemplate,
+            systemPrompt,
+            showAnimation,
+            currentStep,
+            animationSteps,
+            previewText,
+            useTemplate,
+            clearPrompt,
+            runBot,
+            closeAnimation
         };
     }
 };
