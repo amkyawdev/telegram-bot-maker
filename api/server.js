@@ -38,10 +38,13 @@ const AI_HANDLERS = {
 async function processMessage(botToken, userId, message) {
     const config = botConfigs.get(botToken);
     if (!config) {
-        return { error: 'Bot not configured' };
+        console.log(`Bot config not found for token: ${botToken.substring(0, 10)}...`);
+        return { error: 'Bot not configured on server. Please register your bot first.' };
     }
 
-    const { server, model, apiKey, systemPrompt } = config;
+    const { server, model, apiKey, systemPrompt, name } = config;
+    console.log(`Processing message for bot: ${name} (${server}/${model})`);
+    
     const handler = AI_HANDLERS[server];
     
     if (!handler) {
@@ -54,9 +57,12 @@ async function processMessage(botToken, userId, message) {
             { role: 'user', content: message }
         ];
         
+        console.log(`Calling AI handler for user ${userId}...`);
         const response = await handler(apiKey, model, messages);
+        console.log(`AI response received for user ${userId}`);
         return { success: true, response };
     } catch (error) {
+        console.error(`AI error for user ${userId}:`, error.message);
         return { error: error.message };
     }
 }
@@ -80,6 +86,81 @@ async function sendTelegramMessage(botToken, chatId, text, replyToMessageId = nu
     });
     
     return response.json();
+}
+
+// Send animated thinking indicator to Telegram user
+async function sendThinkingIndicator(botToken, chatId) {
+    // First send "typing" action
+    await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: chatId,
+            action: 'typing'
+        })
+    });
+    
+    // Send animated thinking message with animation frames
+    const thinkingFrames = [
+        '🤖 <b>AI is thinking</b> ⏳\n\n<code>Loading...</code>',
+        '🤖 <b>AI is thinking</b> 🔄\n\n<code>Processing...</code>',
+        '🤖 <b>AI is thinking</b> ⚙️\n\n<code>Generating response...</code>'
+    ];
+    
+    // Send initial thinking message
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: chatId,
+            text: thinkingFrames[0],
+            parse_mode: 'HTML'
+        })
+    });
+    
+    const data = await response.json();
+    return data.result?.message_id || null;
+}
+
+// Update thinking message to show progress
+async function updateThinkingMessage(botToken, chatId, messageId, frame = 1) {
+    const thinkingFrames = [
+        '🤖 <b>AI is thinking</b> ⏳\n\n<code>Loading...</code>',
+        '🤖 <b>AI is thinking</b> 🔄\n\n<code>Processing...</code>',
+        '🤖 <b>AI is thinking</b> ⚙️\n\n<code>Generating response...</code>',
+        '🤖 <b>AI is thinking</b> ✨\n\n<code>Finalizing...</code>'
+    ];
+    
+    try {
+        await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId,
+                text: thinkingFrames[frame] || thinkingFrames[0],
+                parse_mode: 'HTML'
+            })
+        });
+    } catch (error) {
+        console.error('Error updating thinking message:', error);
+    }
+}
+
+// Delete a message (thinking indicator)
+async function deleteMessage(botToken, chatId, messageId) {
+    try {
+        await fetch(`https://api.telegram.org/bot${botToken}/deleteMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                message_id: messageId
+            })
+        });
+    } catch (error) {
+        console.error('Error deleting message:', error);
+    }
 }
 
 // Set webhook for Telegram bot
@@ -306,30 +387,35 @@ async function handleRequest(req, res) {
                                 );
                             }
                         } else {
-                            // Send "typing" indicator
-                            await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    chat_id: update.chatId,
-                                    action: 'typing'
-                                })
-                            });
-
+                            // Send animated thinking indicator with message ID
+                            const thinkingMsgId = await sendThinkingIndicator(botToken, update.chatId);
+                            
+                            // Update thinking animation frames while waiting for AI
+                            if (thinkingMsgId) {
+                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 1), 1000);
+                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 2), 2000);
+                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 3), 3000);
+                            }
+                            
                             // Process with AI
                             const result = await processMessage(botToken, update.from.id, update.text);
+                            
+                            // Delete thinking indicator message
+                            if (thinkingMsgId) {
+                                await deleteMessage(botToken, update.chatId, thinkingMsgId);
+                            }
                             
                             if (result.error) {
                                 await sendTelegramMessage(
                                     botToken,
                                     update.chatId,
-                                    `⚠️ Error: ${result.error}`
+                                    `⚠️ <b>Error:</b>\n${result.error}`
                                 );
                             } else {
                                 await sendTelegramMessage(
                                     botToken,
                                     update.chatId,
-                                    result.response,
+                                    `✨ <b>Response:</b>\n\n${result.response}`,
                                     update.messageId
                                 );
                             }

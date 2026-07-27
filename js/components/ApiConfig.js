@@ -83,6 +83,51 @@ const ApiConfig = {
                     </small>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-robot"></i> Telegram Bot Username
+                    </label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text"
+                            class="form-control"
+                            v-model="botUsername"
+                            placeholder="@YourBot"
+                        >
+                    </div>
+                    <small class="form-hint">
+                        Your bot's username (e.g., @Amkyaw_Bot)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="bi bi-link-45deg"></i> Webhook URL <span class="badge bg-warning text-dark">Required</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text"
+                            class="form-control"
+                            v-model="webhookUrl"
+                            placeholder="https://your-server.com/webhook/your-bot-token"
+                        >
+                    </div>
+                    <small class="form-hint">
+                        Your server's webhook endpoint. Format: <code>{base-url}/webhook/{bot-token}</code>
+                    </small>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Setup Instructions:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Deploy your server to a public URL (e.g., Vercel, Railway, Render)</li>
+                        <li>Copy your server URL and append <code>/webhook/</code> plus your bot token</li>
+                        <li>Paste the full webhook URL above</li>
+                        <li>Save configuration to register your bot</li>
+                    </ol>
+                </div>
+
                 <div class="form-actions">
                     <button class="btn btn-secondary" @click="testConnection" :disabled="isTesting">
                         <i class="bi bi-plug"></i> Test Connection
@@ -111,6 +156,8 @@ const ApiConfig = {
         const apiKey = ref('');
         const selectedModel = ref('');
         const botToken = ref('');
+        const botUsername = ref('');
+        const webhookUrl = ref('');
         const showApiKey = ref(false);
         const showToken = ref(false);
         const testStatus = ref(null);
@@ -134,7 +181,9 @@ const ApiConfig = {
             config.openrouter = {
                 apiKey: apiKey.value,
                 model: selectedModel.value,
-                botToken: botToken.value
+                botToken: botToken.value,
+                botUsername: botUsername.value,
+                webhookUrl: webhookUrl.value
             };
             storage.saveApiConfig(config);
             emit('navigate', 'prompt');
@@ -169,6 +218,8 @@ const ApiConfig = {
                 apiKey.value = config.openrouter.apiKey || '';
                 selectedModel.value = config.openrouter.model || '';
                 botToken.value = config.openrouter.botToken || '';
+                botUsername.value = config.openrouter.botUsername || '';
+                webhookUrl.value = config.openrouter.webhookUrl || '';
             }
         };
 
@@ -179,6 +230,8 @@ const ApiConfig = {
             apiKey,
             selectedModel,
             botToken,
+            botUsername,
+            webhookUrl,
             showApiKey,
             showToken,
             testStatus,
