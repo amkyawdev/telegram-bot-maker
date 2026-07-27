@@ -291,6 +291,20 @@
                 Clear Logs
             </button>
         </div>
+        
+        <!-- Manual Test Panel -->
+        <div class="card" id="testPanel" style="display: none;">
+            <h5 class="mb-3"><i class="bi bi-lightning-charge"></i> Quick AI Test</h5>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="testInput" placeholder="Type a message to test..." onkeypress="if(event.key==='Enter')testAI()">
+                <button class="btn btn-primary" onclick="testAI()">
+                    <i class="bi bi-send"></i> Send
+                </button>
+            </div>
+            <div id="testResponse" class="p-3 bg-dark rounded" style="min-height: 60px;">
+                <small class="text-secondary">AI response will appear here...</small>
+            </div>
+        </div>
     </div>
     
     <div class="toast-container" id="toastContainer"></div>
@@ -308,8 +322,10 @@
         const setupPanel = document.getElementById('setupPanel');
         const statusPanel = document.getElementById('statusPanel');
         const logPanel = document.getElementById('logPanel');
+        const testPanel = document.getElementById('testPanel');
         const thinkingAnimation = document.getElementById('thinkingAnimation');
         const logContainer = document.getElementById('logContainer');
+        const testResponse = document.getElementById('testResponse');
         
         // Load saved config
         function loadConfig() {
@@ -431,9 +447,37 @@
             log('🚀 Bot started! Polling for messages...');
             showToast('Bot started successfully!');
             
+            // Show test panel
+            testPanel.style.display = 'block';
+            
             // Start polling immediately and then every 1.5 seconds
             poll();
             pollingInterval = setInterval(poll, 1500);
+        }
+        
+        // Test AI directly
+        async function testAI() {
+            const input = document.getElementById('testInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            testResponse.innerHTML = '<span class="text-warning">🤖 AI is thinking...</span>';
+            
+            const response = await getAIResponse(message);
+            
+            testResponse.innerHTML = `<div class="text-start">
+                <div class="mb-2"><strong>You:</strong> ${escapeHtml(message)}</div>
+                <div class="text-success"><strong>AI:</strong> ${escapeHtml(response)}</div>
+            </div>`;
+            
+            input.value = '';
+        }
+        
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
         }
         
         // Stop bot
@@ -447,6 +491,7 @@
             setupPanel.style.display = 'block';
             statusPanel.style.display = 'none';
             logPanel.style.display = 'none';
+            testPanel.style.display = 'none';
             thinkingAnimation.classList.remove('active');
             
             log('⏹️ Bot stopped');
@@ -458,34 +503,47 @@
             if (!isRunning) return;
             
             const botToken = document.getElementById('botToken').value;
+            if (!botToken) return;
             
             try {
-                // First, try to get updates without offset to check for pending messages
+                // Using long polling with timeout=5
                 const res = await fetch(
-                    `https://api.telegram.org/bot${botToken}/getUpdates?timeout=1`,
+                    `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=5`,
                     { method: 'GET' }
                 );
                 
-                if (!res.ok) return;
+                if (!res.ok) {
+                    log(`❌ Poll failed: HTTP ${res.status}`, 'error');
+                    return;
+                }
                 
                 const data = await res.json();
-                if (!data.ok || !data.result || data.result.length === 0) return;
+                
+                if (!data.ok) {
+                    log(`❌ Telegram error: ${data.description || 'Unknown'}`, 'error');
+                    return;
+                }
+                
+                if (!data.result || data.result.length === 0) {
+                    return; // No new messages
+                }
                 
                 log(`📨 Found ${data.result.length} new message(s)!`);
                 
                 for (const update of data.result) {
-                    // Update offset
-                    if (update.update_id >= offset) {
+                    // Update offset immediately to prevent duplicate processing
+                    if (update.update_id >= offset - 1) {
                         offset = update.update_id + 1;
                     }
                     
                     if (update.message && update.message.text) {
-                        log(`📩 Message: "${update.message.text}" from @${update.message.from?.username || update.message.from?.first_name}`);
+                        const sender = update.message.from?.username || update.message.from?.first_name || 'Unknown';
+                        log(`📩 "${update.message.text}" from @${sender}`);
                         await handleMessage(update.message);
                     }
                 }
             } catch (e) {
-                // Silent fail - will retry
+                log(`❌ Poll error: ${e.message}`, 'error');
             }
         }
         
