@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram AI Bot - Standalone</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a0a0a;
+            --secondary: #111111;
+            --accent: #1a1a1a;
+            --highlight: #e94560;
+            --success: #00d9a5;
+            --bg-dark: #000000;
+            --bg-card: #141414;
+            --border-color: #252525;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .form-control, .form-select {
+            background: var(--secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background: var(--secondary);
+            border-color: var(--highlight);
+            color: var(--text-primary);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--highlight), #ff6b6b);
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #00b894);
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            border: none;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+        
+        .status-panel {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .status-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .pulse-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            border: 3px solid var(--success);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pulse-ring::before,
+        .pulse-ring::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid var(--success);
+            animation: pulse-out 2s ease-out infinite;
+        }
+        
+        .pulse-ring::before {
+            width: 100%;
+            height: 100%;
+            animation-delay: 0s;
+        }
+        
+        .pulse-ring::after {
+            width: 100%;
+            height: 100%;
+            animation-delay: 1s;
+        }
+        
+        @keyframes pulse-out {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        .log-container {
+            background: var(--secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .log-entry:last-child { border-bottom: none; }
+        
+        .log-time { color: var(--text-secondary); }
+        .log-msg { color: var(--success); }
+        .log-error { color: var(--highlight); }
+        
+        .thinking-animation {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: var(--secondary);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .thinking-animation.active { display: block; }
+        
+        .thinking-dots span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--highlight);
+            border-radius: 50%;
+            margin: 0 4px;
+            animation: bounce 1.4s ease-in-out infinite;
+        }
+        
+        .thinking-dots span:nth-child(1) { animation-delay: 0s; }
+        .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-15px); }
+        }
+        
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text-center mb-4">
+            <h1><i class="bi bi-robot"></i> Telegram AI Bot</h1>
+            <p class="text-secondary">Standalone Version - No Server Needed!</p>
+        </div>
+        
+        <!-- Setup Panel -->
+        <div class="card" id="setupPanel">
+            <h4 class="mb-3"><i class="bi bi-gear"></i> Configuration</h4>
+            
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-key"></i> OpenRouter API Key
+                </label>
+                <input type="password" class="form-control" id="apiKey" 
+                       placeholder="sk-or-v1-...">
+                <small class="text-secondary">
+                    Get from <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+                </small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-robot"></i> Telegram Bot Token
+                </label>
+                <input type="password" class="form-control" id="botToken" 
+                       placeholder="123456789:ABCdefGHI...">
+                <small class="text-secondary">
+                    Get from <a href="https://t.me/BotFather" target="_blank">@BotFather</a>
+                </small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-cpu"></i> AI Model
+                </label>
+                <select class="form-select" id="aiModel">
+                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet ⭐ FREE</option>
+                    <option value="google/gemini-3.5-flash">Gemini 3.5 Flash ⭐ FREE</option>
+                    <option value="openai/gpt-4o-mini">GPT-4o Mini ⭐ FREE</option>
+                    <option value="anthropic/claude-3-haiku">Claude 3 Haiku ⭐ FREE</option>
+                    <option value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite ⭐ FREE</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-chat-left-text"></i> System Prompt (Optional)
+                </label>
+                <textarea class="form-control" id="systemPrompt" rows="3" 
+                          placeholder="You are a helpful AI assistant..."></textarea>
+            </div>
+            
+            <button class="btn btn-success w-100" id="startBtn" onclick="startBot()">
+                <i class="bi bi-play-fill"></i> Start Bot
+            </button>
+        </div>
+        
+        <!-- Status Panel -->
+        <div class="card status-panel" id="statusPanel" style="display: none;">
+            <div class="pulse-ring">
+                <i class="bi bi-robot" style="font-size: 3rem;"></i>
+            </div>
+            <div class="status-text text-success">
+                <i class="bi bi-check-circle-fill"></i> Bot is Running!
+            </div>
+            <p class="text-secondary">Polling Telegram for messages...</p>
+            
+            <button class="btn btn-danger mt-3" onclick="stopBot()">
+                <i class="bi bi-stop-fill"></i> Stop Bot
+            </button>
+        </div>
+        
+        <!-- Thinking Animation -->
+        <div class="thinking-animation" id="thinkingAnimation">
+            <p><strong>🤖 AI is thinking...</strong></p>
+            <div class="thinking-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        
+        <!-- Log Panel -->
+        <div class="card" id="logPanel" style="display: none;">
+            <h5 class="mb-3"><i class="bi bi-terminal"></i> Activity Log</h5>
+            <div class="log-container" id="logContainer"></div>
+            <button class="btn btn-outline-secondary btn-sm mt-2" onclick="clearLogs()">
+                Clear Logs
+            </button>
+        </div>
+    </div>
+    
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Global state
+        let pollingInterval = null;
+        let offset = 0;
+        let isRunning = false;
+        
+        // Configuration
+        const CONFIG_KEY = 'telegram_ai_bot_config';
+        
+        // DOM Elements
+        const setupPanel = document.getElementById('setupPanel');
+        const statusPanel = document.getElementById('statusPanel');
+        const logPanel = document.getElementById('logPanel');
+        const thinkingAnimation = document.getElementById('thinkingAnimation');
+        const logContainer = document.getElementById('logContainer');
+        
+        // Load saved config
+        function loadConfig() {
+            const saved = localStorage.getItem(CONFIG_KEY);
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('apiKey').value = config.apiKey || '';
+                document.getElementById('botToken').value = config.botToken || '';
+                document.getElementById('aiModel').value = config.aiModel || 'anthropic/claude-3.5-sonnet';
+                document.getElementById('systemPrompt').value = config.systemPrompt || '';
+            }
+        }
+        
+        // Save config
+        function saveConfig() {
+            const config = {
+                apiKey: document.getElementById('apiKey').value,
+                botToken: document.getElementById('botToken').value,
+                aiModel: document.getElementById('aiModel').value,
+                systemPrompt: document.getElementById('systemPrompt').value
+            };
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+        }
+        
+        // Log function
+        function log(message, type = 'msg') {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+            
+            // Keep only last 100 logs
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+        
+        function clearLogs() {
+            logContainer.innerHTML = '';
+            log('Logs cleared');
+        }
+        
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : 'success'} mb-2`;
+            toast.style.minWidth = '250px';
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Start bot
+        async function startBot() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const botToken = document.getElementById('botToken').value.trim();
+            const aiModel = document.getElementById('aiModel').value;
+            const systemPrompt = document.getElementById('systemPrompt').value.trim();
+            
+            // Validation
+            if (!apiKey || apiKey.length < 20) {
+                showToast('Invalid OpenRouter API Key', 'error');
+                return;
+            }
+            if (!botToken || botToken.length < 20) {
+                showToast('Invalid Telegram Bot Token', 'error');
+                return;
+            }
+            
+            // Save config
+            saveConfig();
+            
+            // Test bot token
+            log('Testing Telegram bot token...');
+            try {
+                const testRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+                const testData = await testRes.json();
+                if (!testData.ok) {
+                    log('Invalid bot token: ' + testData.description, 'error');
+                    showToast('Invalid Telegram Bot Token!', 'error');
+                    return;
+                }
+                log(`Bot verified: @${testData.result.username}`);
+            } catch (e) {
+                log('Telegram API error: ' + e.message, 'error');
+                showToast('Cannot connect to Telegram!', 'error');
+                return;
+            }
+            
+            // Test OpenRouter API
+            log('Testing OpenRouter API...');
+            try {
+                const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: aiModel,
+                        messages: [{ role: 'user', content: 'Hi' }],
+                        max_tokens: 10
+                    })
+                });
+                if (!orRes.ok) {
+                    const err = await orRes.json();
+                    log('OpenRouter error: ' + (err.error?.message || 'Unknown'), 'error');
+                    showToast('Invalid OpenRouter API Key!', 'error');
+                    return;
+                }
+                log('OpenRouter API verified');
+            } catch (e) {
+                log('OpenRouter error: ' + e.message, 'error');
+                showToast('Cannot connect to OpenRouter!', 'error');
+                return;
+            }
+            
+            // Start polling
+            isRunning = true;
+            offset = 0;
+            
+            setupPanel.style.display = 'none';
+            statusPanel.style.display = 'block';
+            logPanel.style.display = 'block';
+            
+            log('🚀 Bot started! Polling for messages...');
+            showToast('Bot started successfully!');
+            
+            // Start polling
+            poll();
+            pollingInterval = setInterval(poll, 1500);
+        }
+        
+        // Stop bot
+        function stopBot() {
+            isRunning = false;
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            
+            setupPanel.style.display = 'block';
+            statusPanel.style.display = 'none';
+            logPanel.style.display = 'none';
+            thinkingAnimation.classList.remove('active');
+            
+            log('⏹️ Bot stopped');
+            showToast('Bot stopped');
+        }
+        
+        // Poll for updates
+        async function poll() {
+            if (!isRunning) return;
+            
+            const botToken = document.getElementById('botToken').value;
+            
+            try {
+                const res = await fetch(
+                    `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=0`,
+                    { method: 'GET' }
+                );
+                
+                if (!res.ok) return;
+                
+                const data = await res.json();
+                if (!data.ok || !data.result || data.result.length === 0) return;
+                
+                for (const update of data.result) {
+                    offset = update.update_id + 1;
+                    
+                    if (update.message && update.message.text) {
+                        await handleMessage(update.message);
+                    }
+                }
+            } catch (e) {
+                // Silent fail - will retry
+            }
+        }
+        
+        // Handle incoming message
+        async function handleMessage(message) {
+            const chatId = message.chat.id;
+            const messageId = message.message_id;
+            const text = message.text;
+            const from = message.from;
+            
+            log(`📩 Message from @${from.username || from.first_name}: ${text.substring(0, 30)}...`);
+            
+            // Handle commands
+            if (text.startsWith('/')) {
+                if (text === '/start') {
+                    await sendMessage(chatId, '👋 Welcome! I\'m an AI-powered bot.\n\nSend me any message and I\'ll respond!');
+                } else if (text === '/help') {
+                    await sendMessage(chatId, '🤖 Commands:\n/start - Start\n/help - Help\n/ai - Toggle AI mode');
+                } else {
+                    await sendMessage(chatId, 'Unknown command. Try /help');
+                }
+                return;
+            }
+            
+            // Show thinking animation
+            thinkingAnimation.classList.add('active');
+            
+            // Send typing action
+            await fetch(`https://api.telegram.org/bot${document.getElementById('botToken').value}/sendChatAction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, action: 'typing' })
+            });
+            
+            // Get AI response
+            const response = await getAIResponse(text);
+            
+            // Hide thinking animation
+            thinkingAnimation.classList.remove('active');
+            
+            // Send response
+            await sendMessage(chatId, response, messageId);
+            log(`📤 Response sent`);
+        }
+        
+        // Get AI response
+        async function getAIResponse(userMessage) {
+            const apiKey = document.getElementById('apiKey').value;
+            const aiModel = document.getElementById('aiModel').value;
+            const systemPrompt = document.getElementById('systemPrompt').value || 
+                'You are a helpful, friendly AI assistant.';
+            
+            try {
+                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://telegram-bot-maker.app',
+                        'X-Title': 'Telegram AI Bot'
+                    },
+                    body: JSON.stringify({
+                        model: aiModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userMessage }
+                        ],
+                        temperature: 0.9,
+                        max_tokens: 2048
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    return '⚠️ AI Error: ' + (data.error?.message || 'Unknown error');
+                }
+                
+                return data.choices?.[0]?.message?.content || 'No response';
+            } catch (e) {
+                return '⚠️ Error: ' + e.message;
+            }
+        }
+        
+        // Send message to Telegram
+        async function sendMessage(chatId, text, replyToMessageId = null) {
+            const botToken = document.getElementById('botToken').value;
+            
+            const payload = {
+                chat_id: chatId,
+                text: text,
+                parse_mode: 'HTML'
+            };
+            
+            if (replyToMessageId) {
+                payload.reply_to_message_id = replyToMessageId;
+            }
+            
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        
+        // Initialize
+        loadConfig();
+        log('🤖 Telegram AI Bot ready');
+        log('Enter your API keys and click Start Bot');
+    </script>
+</body>
+</html>
