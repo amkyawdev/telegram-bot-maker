@@ -15,29 +15,43 @@ const botConfigs = new Map();
 let pollingIntervals = new Map();
 const POLLING_TIMEOUT = 50; // Telegram long polling timeout in seconds
 
-// OpenRouter AI handler
-const AI_HANDLERS = {
-    openrouter: async (apiKey, model, messages) => {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': 'https://telegram-bot-maker.app',
-                'X-Title': 'Telegram Bot Maker'
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.9,
-                max_tokens: 2048
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'OpenRouter API error');
-        return data.choices?.[0]?.message?.content || 'No response';
+// Detect API type based on key prefix
+function getApiEndpoint(apiKey) {
+    if (apiKey.startsWith('sk-or-v1-')) {
+        return { endpoint: 'https://openrouter.ai/api/v1/chat/completions', provider: 'openrouter' };
     }
-};
+    return { endpoint: 'https://api.openai.com/v1/chat/completions', provider: 'openai' };
+}
+
+// AI handler
+async function callAI(apiKey, model, messages) {
+    const { endpoint, provider } = getApiEndpoint(apiKey);
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+    };
+    
+    if (provider === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://github.com/amkyawdev/telegram-bot-maker';
+        headers['X-Title'] = 'Telegram Bot Maker';
+    }
+    
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.9,
+            max_tokens: 2048
+        })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || `${provider} API error`);
+    return data.choices?.[0]?.message?.content || 'No response';
+}
 
 // Process user message and get AI response
 async function processMessage(botToken, userId, message) {
@@ -49,12 +63,6 @@ async function processMessage(botToken, userId, message) {
 
     const { server, model, apiKey, systemPrompt, name } = config;
     console.log(`Processing message for bot: ${name} (${server}/${model})`);
-    
-    const handler = AI_HANDLERS[server];
-    
-    if (!handler) {
-        return { error: 'Unsupported AI server' };
-    }
 
     try {
         const messages = [
@@ -62,8 +70,8 @@ async function processMessage(botToken, userId, message) {
             { role: 'user', content: message }
         ];
         
-        console.log(`Calling AI handler for user ${userId}...`);
-        const response = await handler(apiKey, model, messages);
+        console.log(`Calling AI for user ${userId}...`);
+        const response = await callAI(apiKey, model, messages);
         console.log(`AI response received for user ${userId}`);
         return { success: true, response };
     } catch (error) {
@@ -448,12 +456,9 @@ async function handleRequest(req, res) {
 
                     // Test AI API connection
                     try {
-                        const handler = AI_HANDLERS[server];
-                        if (!handler) {
-                            throw new Error('Unsupported server');
-                        }
-                        await handler(apiKey, model, [
-                            { role: 'user', content: 'test' }
+                        await callAI(apiKey, model, [
+                            { role: 'system', content: 'You are a test bot.' },
+                            { role: 'user', content: 'Say OK' }
                         ]);
                     } catch (apiError) {
                         res.writeHead(400, { 'Content-Type': 'application/json' });
