@@ -274,14 +274,26 @@ You can use variables like:
             <!-- Bot Creation Animation Modal -->
             <div class="modal-overlay" v-if="showAnimation" @click.self="closeAnimation">
                 <div class="modal-content creation-modal">
-                    <div class="modal-header">
-                        <div class="creation-icon" :class="{ success: creationComplete }">
-                            <i class="bi" :class="creationComplete ? 'bi-check-circle-fill' : 'bi bi-robot'"></i>
-                        </div>
-                        <h3>
-                            {{ creationComplete ? '🎉 Bot Created Successfully!' : '🚀 Creating Your Bot' }}
-                        </h3>
+                    <!-- Confetti container -->
+                    <div class="confetti-container" v-if="creationComplete">
+                        <div class="confetti" v-for="i in 20" :key="i" :style="{ '--delay': i * 0.1 + 's', '--x': Math.random() * 100 + '%' }"></div>
                     </div>
+                    
+                    <div class="modal-header">
+                        <div class="creation-icon" :class="{ success: creationComplete, error: hasError }">
+                            <div class="icon-ring" v-if="!creationComplete && !hasError">
+                                <div class="ring ring-1"></div>
+                                <div class="ring ring-2"></div>
+                                <div class="ring ring-3"></div>
+                            </div>
+                            <i class="bi" :class="getIconClass()"></i>
+                        </div>
+                        <h3>{{ getHeaderText() }}</h3>
+                        <p class="header-subtitle" v-if="!creationComplete && !hasError">
+                            {{ creationSteps[currentStep]?.description || 'Processing...' }}
+                        </p>
+                    </div>
+                    
                     <div class="creation-content">
                         <div class="creation-steps">
                             <div 
@@ -289,52 +301,73 @@ You can use variables like:
                                 :key="index"
                                 class="creation-step"
                                 :class="{ 
-                                    active: currentStep === index && !creationComplete, 
+                                    active: currentStep === index && !creationComplete && !hasError, 
                                     completed: step.status === 'completed',
                                     error: step.status === 'error'
                                 }"
                             >
                                 <div class="step-icon">
-                                    <i v-if="step.status === 'completed'" class="bi bi-check-circle-fill"></i>
-                                    <i v-else-if="step.status === 'error'" class="bi bi-x-circle-fill"></i>
-                                    <i v-else-if="currentStep === index && !creationComplete" class="bi bi-arrow-right-circle-fill animate-pulse"></i>
-                                    <i v-else class="bi bi-circle"></i>
+                                    <div class="step-checkmark" v-if="step.status === 'completed'">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div class="step-spinner" v-else-if="currentStep === index && !creationComplete && !hasError">
+                                        <div class="spinner-ring"></div>
+                                    </div>
+                                    <div class="step-error" v-else-if="step.status === 'error'">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="step-circle" v-else></div>
                                 </div>
                                 <div class="step-details">
                                     <div class="step-title">{{ step.title }}</div>
                                     <div class="step-description">{{ step.description }}</div>
-                                    <div class="step-progress" v-if="currentStep === index && !creationComplete">
-                                        <div class="progress-bar-animated"></div>
-                                    </div>
+                                </div>
+                                <div class="step-indicator" v-if="currentStep === index && !creationComplete && !hasError">
+                                    <span class="dot"></span>
+                                    <span class="dot"></span>
+                                    <span class="dot"></span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="bot-preview" v-if="creationComplete && createdBotInfo">
                             <div class="preview-header">
-                                <i class="bi bi-telegram"></i> Your Bot is Ready!
+                                <div class="telegram-icon">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0m4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                                    </svg>
+                                </div>
+                                <span>Your Bot is Ready!</span>
                             </div>
                             <div class="preview-body">
-                                <div class="bot-info-row">
-                                    <span class="label">Bot Name:</span>
-                                    <span class="value">{{ createdBotInfo.name }}</span>
+                                <div class="bot-avatar-preview">
+                                    <div class="avatar-ring">
+                                        <i class="bi bi-robot"></i>
+                                    </div>
                                 </div>
-                                <div class="bot-info-row">
-                                    <span class="label">Username:</span>
-                                    <span class="value">@{{ createdBotInfo.username }}</span>
+                                <div class="bot-info-card">
+                                    <div class="bot-name-display">{{ createdBotInfo.name }}</div>
+                                    <div class="bot-username-display">@{{ createdBotInfo.username }}</div>
                                 </div>
-                                <div class="bot-info-row">
-                                    <span class="label">AI Server:</span>
-                                    <span class="value">{{ createdBotInfo.server }}</span>
-                                </div>
-                                <div class="bot-info-row">
-                                    <span class="label">Model:</span>
-                                    <span class="value">{{ createdBotInfo.model }}</span>
+                                <div class="bot-details-grid">
+                                    <div class="detail-item">
+                                        <i class="bi bi-globe"></i>
+                                        <span>OpenRouter</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="bi bi-cpu"></i>
+                                        <span>{{ getModelDisplayName(createdBotInfo.model) }}</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="preview-footer">
                                 <a :href="'https://t.me/' + createdBotInfo.username" target="_blank" class="btn btn-telegram">
-                                    <i class="bi bi-telegram"></i> Open in Telegram
+                                    <i class="bi bi-telegram"></i> Start Chatting
                                 </a>
                             </div>
                         </div>
@@ -379,6 +412,30 @@ You can use variables like:
             const config = storage.getApiConfig();
             return config?.openrouter?.apiKey && config?.openrouter?.model;
         });
+        
+        const hasError = computed(() => {
+            return creationSteps.value.some(step => step.status === 'error');
+        });
+        
+        const getIconClass = () => {
+            if (creationComplete.value) return 'bi-check-circle-fill';
+            if (hasError.value) return 'bi-x-circle-fill';
+            return 'bi bi-robot';
+        };
+        
+        const getHeaderText = () => {
+            if (creationComplete.value) return '🎉 Bot Created Successfully!';
+            if (hasError.value) return '❌ Creation Failed';
+            return '🚀 Creating Your Bot';
+        };
+        
+        const getModelDisplayName = (modelId) => {
+            const model = AI_MODELS.openrouter.models.find(m => m.id === modelId);
+            if (model) {
+                return model.name.replace(' ⭐FREE', '').replace(' (Paid)', '');
+            }
+            return modelId.split('/').pop();
+        };
         
         const formatTime = (date) => {
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -767,6 +824,10 @@ You can use variables like:
             isChatLoading,
             chatMessages,
             hasConfig,
+            hasError,
+            getIconClass,
+            getHeaderText,
+            getModelDisplayName,
             updateLineCount,
             insertVariable,
             useTemplate,
