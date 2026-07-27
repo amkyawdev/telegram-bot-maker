@@ -403,12 +403,26 @@
                 return;
             }
             
+            // Delete any existing webhook (required for polling to work)
+            log('🔄 Clearing any existing webhook...');
+            try {
+                await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
+                    method: 'POST'
+                });
+                log('✅ Webhook cleared');
+            } catch (e) {
+                log('⚠️ Could not clear webhook (may not exist)');
+            }
+            
+            // Reset offset to get all pending messages
+            offset = 0;
+            log('🔄 Resetting message offset...');
+            
             log('✅ Configuration saved');
             log('💡 Bot is running! Send a message to test AI response.');
             
             // Start polling
             isRunning = true;
-            offset = 0;
             
             setupPanel.style.display = 'none';
             statusPanel.style.display = 'block';
@@ -417,7 +431,7 @@
             log('🚀 Bot started! Polling for messages...');
             showToast('Bot started successfully!');
             
-            // Start polling
+            // Start polling immediately and then every 1.5 seconds
             poll();
             pollingInterval = setInterval(poll, 1500);
         }
@@ -446,8 +460,9 @@
             const botToken = document.getElementById('botToken').value;
             
             try {
+                // First, try to get updates without offset to check for pending messages
                 const res = await fetch(
-                    `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=0`,
+                    `https://api.telegram.org/bot${botToken}/getUpdates?timeout=1`,
                     { method: 'GET' }
                 );
                 
@@ -456,10 +471,16 @@
                 const data = await res.json();
                 if (!data.ok || !data.result || data.result.length === 0) return;
                 
+                log(`📨 Found ${data.result.length} new message(s)!`);
+                
                 for (const update of data.result) {
-                    offset = update.update_id + 1;
+                    // Update offset
+                    if (update.update_id >= offset) {
+                        offset = update.update_id + 1;
+                    }
                     
                     if (update.message && update.message.text) {
+                        log(`📩 Message: "${update.message.text}" from @${update.message.from?.username || update.message.from?.first_name}`);
                         await handleMessage(update.message);
                     }
                 }
