@@ -10,6 +10,7 @@ const AI_MODELS = {
             { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
             { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
             { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+            { id: 'gemini-1.5-pro-exp', name: 'Gemini 1.5 Pro Experimental' },
             { id: 'gemini-exp-1206', name: 'Gemini 1.0 Pro' },
             { id: 'learnlm-1.5-pro-experimental', name: 'LearnLM 1.5 Pro' }
         ],
@@ -42,8 +43,11 @@ const AI_MODELS = {
             { id: 'gpt-4o-mini-high', name: 'GPT-4o Mini High' },
             { id: 'chatgpt-4o-latest', name: 'ChatGPT-4o Latest' },
             { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+            { id: 'gpt-4-turbo-2024-04-09', name: 'GPT-4 Turbo (Apr 2024)' },
             { id: 'gpt-4', name: 'GPT-4' },
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+            { id: 'gpt-4-0613', name: 'GPT-4 (Jun 2023)' },
+            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
+            { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16K' }
         ],
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         testEndpoint: '/v1/models'
@@ -55,7 +59,9 @@ const AI_MODELS = {
         apiKeyPlaceholder: 'Enter your DeepSeek API Key',
         models: [
             { id: 'deepseek-chat', name: 'DeepSeek Chat V3' },
+            { id: 'deepseek-chat-v3-0324', name: 'DeepSeek V3 (Mar 2024)' },
             { id: 'deepseek-coder', name: 'DeepSeek Coder V2' },
+            { id: 'deepseek-coder-v2-lite-instruct', name: 'DeepSeek Coder V2 Lite' },
             { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' },
             { id: 'deepseek-chat-v3-32k', name: 'DeepSeek Chat V3 32K' }
         ],
@@ -68,18 +74,33 @@ const AI_MODELS = {
         iconColor: '#a855f7',
         apiKeyPlaceholder: 'Enter your OpenRouter API Key',
         models: [
+            // ⭐ FREE Models - Tier 1 (Best)
             { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet ⭐FREE' },
-            { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku ⭐FREE' },
             { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash ⭐FREE' },
-            { id: 'google/gemini-1.5-flash', name: 'Gemini 1.5 Flash ⭐FREE' },
             { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini ⭐FREE' },
+            // ⭐ FREE Models - Tier 2
+            { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku ⭐FREE' },
+            { id: 'google/gemini-1.5-flash', name: 'Gemini 1.5 Flash ⭐FREE' },
             { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B ⭐FREE' },
             { id: 'mistralai/mistral-nemo', name: 'Mistral Nemo ⭐FREE' },
             { id: 'qwen/qwen-2-7b-instruct', name: 'Qwen 2 7B ⭐FREE' },
+            // ⭐ FREE Models - Tier 3
             { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat ⭐FREE' },
+            { id: 'microsoft Phi-3-mini-128k-instruct', name: 'Phi-3 Mini ⭐FREE' },
+            { id: 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO', name: 'Nous Hermes 2 ⭐FREE' },
+            { id: 'allenai/OLMo-7B-Instruct', name: 'OLMo 7B ⭐FREE' },
+            { id: 'databricks/dbrx-instruct', name: 'DBRX Instruct ⭐FREE' },
+            { id: 'stabilityai/stable-diffusion-3-medium', name: 'SD3 Medium ⭐FREE' },
+            // 💰 Paid Models
             { id: 'openai/gpt-4o', name: 'GPT-4o (Paid)' },
+            { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo (Paid)' },
             { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus (Paid)' },
-            { id: 'x-ai/grok-2', name: 'Grok-2 (Paid)' }
+            { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet (Paid)' },
+            { id: 'x-ai/grok-2', name: 'Grok-2 (Paid)' },
+            { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5 (Paid)' },
+            { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B (Paid)' },
+            { id: 'mistralai/mixtral-8x22b-instruct', name: 'Mixtral 8x22B (Paid)' },
+            { id: 'cohere/command-r-plus', name: 'Command R+ (Paid)' }
         ],
         apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
         testEndpoint: '/v1/models'
@@ -94,7 +115,8 @@ const AI_MODELS = {
             { id: 'grok-2-mini-1212', name: 'Grok-2 Mini' },
             { id: 'grok-beta', name: 'Grok Beta' },
             { id: 'grok-1', name: 'Grok-1' },
-            { id: 'grok-2-vision-1212', name: 'Grok-2 Vision' }
+            { id: 'grok-2-vision-1212', name: 'Grok-2 Vision' },
+            { id: 'grok-1.5', name: 'Grok-1.5' }
         ],
         apiEndpoint: 'https://api.x.ai/v1/chat/completions',
         testEndpoint: '/v1/models'
