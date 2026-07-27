@@ -6,10 +6,12 @@ const AI_MODELS = {
         apiKeyPlaceholder: 'Enter your Google AI API Key',
         models: [
             { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
+            { id: 'gemini-2.0-flash-thinking-exp-1219', name: 'Gemini 2.0 Flash Thinking' },
             { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
             { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
             { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-            { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro' }
+            { id: 'gemini-exp-1206', name: 'Gemini 1.0 Pro' },
+            { id: 'learnlm-1.5-pro-experimental', name: 'LearnLM 1.5 Pro' }
         ],
         apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
         testEndpoint: '/v1beta/models?key='
@@ -37,6 +39,8 @@ const AI_MODELS = {
         models: [
             { id: 'gpt-4o', name: 'GPT-4o' },
             { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+            { id: 'gpt-4o-mini-high', name: 'GPT-4o Mini High' },
+            { id: 'chatgpt-4o-latest', name: 'ChatGPT-4o Latest' },
             { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
             { id: 'gpt-4', name: 'GPT-4' },
             { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
@@ -50,9 +54,10 @@ const AI_MODELS = {
         iconColor: '#0066cc',
         apiKeyPlaceholder: 'Enter your DeepSeek API Key',
         models: [
-            { id: 'deepseek-chat', name: 'DeepSeek Chat' },
-            { id: 'deepseek-coder', name: 'DeepSeek Coder' },
-            { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' }
+            { id: 'deepseek-chat', name: 'DeepSeek Chat V3' },
+            { id: 'deepseek-coder', name: 'DeepSeek Coder V2' },
+            { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' },
+            { id: 'deepseek-chat-v3-32k', name: 'DeepSeek Chat V3 32K' }
         ],
         apiEndpoint: 'https://api.deepseek.com/v1/chat/completions',
         testEndpoint: '/v1/models'
@@ -63,12 +68,18 @@ const AI_MODELS = {
         iconColor: '#a855f7',
         apiKeyPlaceholder: 'Enter your OpenRouter API Key',
         models: [
-            { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OpenRouter)' },
-            { id: 'openai/gpt-4o', name: 'GPT-4o (OpenRouter)' },
-            { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5 (OpenRouter)' },
-            { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat (OpenRouter)' },
-            { id: 'x-ai/grok-2', name: 'Grok-2 (OpenRouter)' },
-            { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B' }
+            { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet ⭐FREE' },
+            { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku ⭐FREE' },
+            { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash ⭐FREE' },
+            { id: 'google/gemini-1.5-flash', name: 'Gemini 1.5 Flash ⭐FREE' },
+            { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini ⭐FREE' },
+            { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B ⭐FREE' },
+            { id: 'mistralai/mistral-nemo', name: 'Mistral Nemo ⭐FREE' },
+            { id: 'qwen/qwen-2-7b-instruct', name: 'Qwen 2 7B ⭐FREE' },
+            { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat ⭐FREE' },
+            { id: 'openai/gpt-4o', name: 'GPT-4o (Paid)' },
+            { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus (Paid)' },
+            { id: 'x-ai/grok-2', name: 'Grok-2 (Paid)' }
         ],
         apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
         testEndpoint: '/v1/models'
@@ -82,7 +93,8 @@ const AI_MODELS = {
             { id: 'grok-2-1212', name: 'Grok-2' },
             { id: 'grok-2-mini-1212', name: 'Grok-2 Mini' },
             { id: 'grok-beta', name: 'Grok Beta' },
-            { id: 'grok-1', name: 'Grok-1' }
+            { id: 'grok-1', name: 'Grok-1' },
+            { id: 'grok-2-vision-1212', name: 'Grok-2 Vision' }
         ],
         apiEndpoint: 'https://api.x.ai/v1/chat/completions',
         testEndpoint: '/v1/models'
