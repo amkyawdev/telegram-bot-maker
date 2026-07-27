@@ -188,42 +188,74 @@ You can use variables like:
             <div class="tab-content" v-if="activeTab === 'test'">
                 <div class="section">
                     <h2 class="section-title">
-                        <i class="bi bi-play-circle"></i> Test Your Prompt
+                        <i class="bi bi-chat-dots"></i> Chat Test
                     </h2>
-                    <div class="test-container">
-                        <div class="test-config">
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <i class="bi bi-chat-dots"></i> Test Message
-                                </label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    v-model="testMessage"
-                                    placeholder="Enter a test message..."
-                                >
+                    
+                    <!-- Chat Container -->
+                    <div class="chat-container">
+                        <!-- Chat Messages -->
+                        <div class="chat-messages" ref="chatMessages">
+                            <div v-if="chatHistory.length === 0" class="chat-empty">
+                                <i class="bi bi-chat-square-text"></i>
+                                <p>Start chatting with your bot!</p>
+                                <small>Your messages will appear here with AI responses.</small>
                             </div>
-                            <button 
-                                class="btn btn-primary btn-block" 
-                                @click="testPrompt"
-                                :disabled="!systemPrompt || !testMessage || isTesting"
+                            
+                            <div 
+                                v-for="(msg, index) in chatHistory" 
+                                :key="index"
+                                class="chat-message"
+                                :class="msg.role"
                             >
-                                <i class="bi" :class="isTesting ? 'bi-hourglass-split' : 'bi-send'"></i>
-                                {{ isTesting ? 'Testing...' : 'Run Test' }}
+                                <div class="message-avatar">
+                                    <i :class="msg.role === 'user' ? 'bi bi-person' : 'bi bi-robot'"></i>
+                                </div>
+                                <div class="message-content">
+                                    <div class="message-text">{{ msg.content }}</div>
+                                    <div class="message-time">{{ msg.time }}</div>
+                                </div>
+                            </div>
+                            
+                            <div v-if="isChatLoading" class="chat-message bot typing">
+                                <div class="message-avatar">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div class="message-content">
+                                    <div class="message-text typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Input -->
+                        <div class="chat-input-container">
+                            <input 
+                                type="text" 
+                                class="form-control chat-input" 
+                                v-model="chatMessage"
+                                placeholder="Type a message..."
+                                @keyup.enter="sendChatMessage"
+                                :disabled="isChatLoading || !hasConfig"
+                            >
+                            <button 
+                                class="btn btn-primary chat-send-btn"
+                                @click="sendChatMessage"
+                                :disabled="isChatLoading || !chatMessage.trim() || !hasConfig"
+                            >
+                                <i class="bi bi-send"></i>
                             </button>
                         </div>
-
-                        <div class="test-response" v-if="testResult">
-                            <div class="response-header">
-                                <i class="bi bi-robot"></i> AI Response
-                            </div>
-                            <div class="response-content" :class="{ error: testResult.error }">
-                                <pre>{{ testResult.error || testResult.response }}</pre>
-                            </div>
-                            <div class="response-meta" v-if="!testResult.error">
-                                <span><i class="bi bi-clock"></i> {{ testResult.latency }}ms</span>
-                                <span><i class="bi bi-check-circle"></i> Success</span>
-                            </div>
+                        
+                        <div v-if="!hasConfig" class="chat-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Please configure your OpenRouter API key first.
+                        </div>
+                        
+                        <div class="chat-actions">
+                            <button class="btn btn-sm btn-secondary" @click="clearChat">
+                                <i class="bi bi-trash"></i> Clear Chat
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -336,6 +368,119 @@ You can use variables like:
         const testMessage = ref('');
         const isTesting = ref(false);
         const testResult = ref(null);
+        
+        // Chat variables
+        const chatMessage = ref('');
+        const chatHistory = ref([]);
+        const isChatLoading = ref(false);
+        const chatMessages = ref(null);
+        
+        const hasConfig = computed(() => {
+            const config = storage.getApiConfig();
+            return config?.openrouter?.apiKey && config?.openrouter?.model;
+        });
+        
+        const formatTime = (date) => {
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        };
+        
+        const sendChatMessage = async () => {
+            if (!chatMessage.value.trim() || isChatLoading.value) return;
+            
+            const config = storage.getApiConfig();
+            const openrouterConfig = config?.openrouter;
+            
+            if (!openrouterConfig?.apiKey) return;
+            
+            const userMessage = chatMessage.value.trim();
+            const now = new Date();
+            
+            // Add user message to chat
+            chatHistory.value.push({
+                role: 'user',
+                content: userMessage,
+                time: formatTime(now)
+            });
+            
+            chatMessage.value = '';
+            isChatLoading.value = true;
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                if (chatMessages.value) {
+                    chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
+                }
+            }, 100);
+            
+            try {
+                // Build messages array with system prompt and chat history
+                const messages = [
+                    { role: 'system', content: systemPrompt.value || 'You are a helpful AI assistant.' },
+                    ...chatHistory.value.map(m => ({ role: m.role, content: m.content }))
+                ];
+                
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${openrouterConfig.apiKey}`,
+                        'HTTP-Referer': 'https://telegram-bot-maker.app',
+                        'X-Title': 'Telegram Bot Maker'
+                    },
+                    body: JSON.stringify({
+                        model: openrouterConfig.model,
+                        messages: messages,
+                        temperature: 0.9,
+                        max_tokens: 2048
+                    })
+                });
+                
+                const text = await response.text();
+                let aiResponse;
+                
+                if (!response.ok) {
+                    try {
+                        const errorData = JSON.parse(text);
+                        aiResponse = errorData.error?.message || `Error: HTTP ${response.status}`;
+                    } catch {
+                        aiResponse = `Error: HTTP ${response.status}`;
+                    }
+                } else {
+                    try {
+                        const data = JSON.parse(text);
+                        aiResponse = data.choices?.[0]?.message?.content || 'No response';
+                    } catch {
+                        aiResponse = 'Failed to parse response';
+                    }
+                }
+                
+                // Add AI response to chat
+                chatHistory.value.push({
+                    role: 'bot',
+                    content: aiResponse,
+                    time: formatTime(new Date())
+                });
+            } catch (error) {
+                chatHistory.value.push({
+                    role: 'bot',
+                    content: 'Error: ' + error.message,
+                    time: formatTime(new Date())
+                });
+            }
+            
+            isChatLoading.value = false;
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                if (chatMessages.value) {
+                    chatMessages.value.scrollTop = chatMessages.value.scrollHeight;
+                }
+            }, 100);
+        };
+        
+        const clearChat = () => {
+            chatHistory.value = [];
+        };
 
         const creationSteps = ref([
             { title: 'Validating API Configuration', description: 'Checking API keys and settings...', status: 'pending' },
@@ -617,6 +762,11 @@ You can use variables like:
             testMessage,
             isTesting,
             testResult,
+            chatMessage,
+            chatHistory,
+            isChatLoading,
+            chatMessages,
+            hasConfig,
             updateLineCount,
             insertVariable,
             useTemplate,
@@ -624,7 +774,9 @@ You can use variables like:
             testPrompt,
             createBot,
             closeAnimation,
-            createAnother
+            createAnother,
+            sendChatMessage,
+            clearChat
         };
     }
 };
