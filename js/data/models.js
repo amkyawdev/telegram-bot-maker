@@ -1,7 +1,8 @@
 const AI_MODELS = {
     gemini: {
         name: 'Gemini',
-        icon: 'assets/icons/gemini.png',
+        iconClass: 'bi-gem',
+        iconColor: '#4285f4',
         apiKeyPlaceholder: 'Enter your Google AI API Key',
         models: [
             { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
@@ -15,7 +16,8 @@ const AI_MODELS = {
     },
     claude: {
         name: 'Claude',
-        icon: 'assets/icons/claude.png',
+        iconClass: 'bi-person-badge',
+        iconColor: '#d4a574',
         apiKeyPlaceholder: 'Enter your Anthropic API Key',
         models: [
             { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
@@ -29,7 +31,8 @@ const AI_MODELS = {
     },
     openai: {
         name: 'OpenAI',
-        icon: 'assets/icons/openai.png',
+        iconClass: 'bi-robot',
+        iconColor: '#10a37f',
         apiKeyPlaceholder: 'Enter your OpenAI API Key',
         models: [
             { id: 'gpt-4o', name: 'GPT-4o' },
@@ -43,7 +46,8 @@ const AI_MODELS = {
     },
     deepseek: {
         name: 'DeepSeek',
-        icon: 'assets/icons/deepseek.png',
+        iconClass: 'bi-cpu',
+        iconColor: '#0066cc',
         apiKeyPlaceholder: 'Enter your DeepSeek API Key',
         models: [
             { id: 'deepseek-chat', name: 'DeepSeek Chat' },
@@ -55,7 +59,8 @@ const AI_MODELS = {
     },
     openrouter: {
         name: 'OpenRouter',
-        icon: 'assets/icons/openrouter.svg',
+        iconClass: 'bi-globe',
+        iconColor: '#a855f7',
         apiKeyPlaceholder: 'Enter your OpenRouter API Key',
         models: [
             { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OpenRouter)' },
@@ -70,7 +75,8 @@ const AI_MODELS = {
     },
     grok: {
         name: 'Grok',
-        icon: 'assets/icons/grok.svg',
+        iconClass: 'bi-lightning-charge',
+        iconColor: '#f97316',
         apiKeyPlaceholder: 'Enter your xAI API Key',
         models: [
             { id: 'grok-2-1212', name: 'Grok-2' },

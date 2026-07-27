@@ -59,7 +59,7 @@ const MainPage = {
                             <i class="bi bi-check-circle-fill"></i>
                         </div>
                         <div class="server-icon">
-                            <img :src="server.icon" :alt="server.name" @error="handleImageError">
+                            <i :class="server.iconClass" :style="{ color: server.iconColor }"></i>
                         </div>
                         <div class="server-name">{{ server.name }}</div>
                         <div class="server-models">{{ server.models.length }} models</div>

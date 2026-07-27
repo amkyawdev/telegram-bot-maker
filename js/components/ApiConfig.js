@@ -21,7 +21,7 @@ const ApiConfig = {
                     :class="{ active: currentServer === key }"
                     @click="currentServer = key"
                 >
-                    <img :src="server.icon" :alt="server.name" class="tab-icon">
+                    <i :class="server.iconClass" :style="{ color: server.iconColor }"></i>
                     {{ server.name }}
                 </button>
             </div>
@@ -29,7 +29,9 @@ const ApiConfig = {
             <!-- Config Form -->
             <div class="config-card" v-if="servers[currentServer]">
                 <div class="card-header">
-                    <img :src="servers[currentServer].icon" class="server-logo">
+                    <div class="server-logo-icon">
+                        <i :class="servers[currentServer].iconClass" :style="{ color: servers[currentServer].iconColor }"></i>
+                    </div>
                     <div class="server-info">
                         <h3>{{ servers[currentServer].name }}</h3>
                         <p>{{ servers[currentServer].apiKeyPlaceholder }}</p>

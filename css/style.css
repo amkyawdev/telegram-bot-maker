@@ -3,24 +3,24 @@
    ======================================== */
 
 :root {
-    --primary: #1a1a2e;
-    --secondary: #16213e;
-    --accent: #0f3460;
+    --primary: #0a0a0a;
+    --secondary: #111111;
+    --accent: #1a1a1a;
     --highlight: #e94560;
-    --text-primary: #eaeaea;
-    --text-secondary: #a0a0a0;
-    --text-muted: #666;
-    --bg-dark: #0d0d1a;
-    --bg-card: #1a1a2e;
-    --bg-card-hover: #252545;
-    --border-color: #2a2a4a;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-muted: #666666;
+    --bg-dark: #000000;
+    --bg-card: #141414;
+    --bg-card-hover: #1a1a1a;
+    --border-color: #252525;
     --success: #00d9a5;
     --warning: #ffc107;
     --error: #ff4757;
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
-    --radius: 16px;
-    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.6);
+    --radius: 12px;
+    --radius-sm: 6px;
 }
 
 * {
@@ -31,7 +31,7 @@
 
 body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary) 100%);
+    background: #000000;
     color: var(--text-primary);
     min-height: 100vh;
     line-height: 1.6;
@@ -47,7 +47,7 @@ body {
 .loader-overlay {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary) 100%);
+    background: #000000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -60,9 +60,9 @@ body {
 
 .loader-animation {
     position: relative;
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 24px;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
 }
 
 .loader-ring {
@@ -216,11 +216,11 @@ body {
 .hero-section {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 32px 24px;
+    gap: 20px;
+    padding: 20px 16px;
     background: linear-gradient(135deg, var(--bg-card), var(--secondary));
     border-radius: var(--radius);
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow);
 }
@@ -233,19 +233,19 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
+    padding: 4px 10px;
     background: linear-gradient(135deg, var(--highlight), #ff6b6b);
-    border-radius: 20px;
-    font-size: 0.75rem;
+    border-radius: 16px;
+    font-size: 0.7rem;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: white;
 }
 
 .hero-title {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-bottom: 8px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 6px;
     background: linear-gradient(135deg, var(--text-primary), var(--highlight));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -253,8 +253,8 @@ body {
 
 .hero-subtitle {
     color: var(--text-secondary);
-    margin-bottom: 20px;
-    font-size: 0.95rem;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
 }
 
 .hero-stats {
@@ -346,25 +346,25 @@ body {
 /* Server Grid */
 .server-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+    gap: 8px;
 }
 
 .server-card {
     background: var(--bg-card);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    padding: 20px 16px;
+    padding: 14px 10px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     position: relative;
 }
 
 .server-card:hover {
     border-color: var(--highlight);
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 .server-card.selected {
@@ -378,26 +378,27 @@ body {
 
 .card-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 24px;
-    height: 24px;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
     background: var(--success);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--bg-dark);
-    font-size: 0.75rem;
+    font-size: 0.6rem;
 }
 
 .server-icon {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 12px;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.8rem;
 }
 
 .server-icon img {
@@ -408,11 +409,12 @@ body {
 
 .server-name {
     font-weight: 600;
+    font-size: 0.8rem;
     margin-bottom: 4px;
 }
 
 .server-models {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
 }
 
@@ -606,31 +608,31 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
 }
 
 .card-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--border-color);
 }
 
 .server-logo {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
 }
 
 .server-info h3 {
-    font-size: 1.1rem;
-    margin-bottom: 4px;
+    font-size: 1rem;
+    margin-bottom: 2px;
 }
 
 .server-info p {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin: 0;
 }
@@ -819,13 +821,13 @@ body {
 .template-card {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 20px;
+    gap: 12px;
+    padding: 14px;
     background: var(--bg-card);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .template-card:hover {
@@ -838,14 +840,14 @@ body {
 }
 
 .template-icon {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     background: linear-gradient(135deg, var(--highlight), #ff6b6b);
-    border-radius: 14px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: white;
 }
 
@@ -854,18 +856,18 @@ body {
 }
 
 .template-info h3 {
-    font-size: 1rem;
-    margin-bottom: 4px;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
 }
 
 .template-info p {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin: 0;
 }
 
 .template-check {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: var(--success);
 }
 
@@ -1006,12 +1008,12 @@ body {
 .bot-card {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 20px;
+    gap: 12px;
+    padding: 14px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .bot-card:hover {
@@ -1019,10 +1021,10 @@ body {
 }
 
 .bot-avatar {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     background: var(--bg-dark);
-    border-radius: 12px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1030,8 +1032,8 @@ body {
 }
 
 .bot-avatar img {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     object-fit: contain;
 }
 
@@ -1040,8 +1042,8 @@ body {
 }
 
 .bot-name {
-    font-size: 1rem;
-    margin-bottom: 6px;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
 }
 
 .bot-meta {
@@ -2342,6 +2344,17 @@ body {
     background: var(--bg-dark);
     border-radius: 14px;
     padding: 8px;
+}
+
+.server-logo-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--bg-dark);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
 }
 
 .server-info h3 {
