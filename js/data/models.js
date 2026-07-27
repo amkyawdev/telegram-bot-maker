@@ -5,32 +5,52 @@ const AI_MODELS = {
         iconColor: '#a855f7',
         apiKeyPlaceholder: 'Enter your OpenRouter API Key',
         models: [
-            // ⭐ FREE Models - Tier 1 (Best)
+            // ⭐ FREE Models - Tier 1 (Best Performance)
             { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet ⭐FREE' },
             { id: 'google/gemini-3.5-flash', name: 'Gemini 3.5 Flash ⭐FREE' },
             { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini ⭐FREE' },
-            // ⭐ FREE Models - Tier 2
             { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku ⭐FREE' },
+            // ⭐ FREE Models - Tier 2 (Google & Meta)
             { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite ⭐FREE' },
             { id: 'google/gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite ⭐FREE' },
+            { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash ⭐FREE' },
+            { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B ⭐FREE' },
+            { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B ⭐FREE' },
+            { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B ⭐FREE' },
+            { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B ⭐FREE' },
             { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B ⭐FREE' },
+            { id: 'meta-llama/llama-3.2-3b-instruct', name: 'Llama 3.2 3B ⭐FREE' },
+            { id: 'meta-llama/llama-3.2-1b-instruct', name: 'Llama 3.2 1B ⭐FREE' },
+            // ⭐ FREE Models - Tier 3 (Mistral & Qwen)
             { id: 'mistralai/mistral-nemo', name: 'Mistral Nemo ⭐FREE' },
+            { id: 'mistralai/mistral-small-3.2-24b-instruct', name: 'Mistral Small 3.2 ⭐FREE' },
             { id: 'qwen/qwen3.5-flash-02-23', name: 'Qwen 3.5 Flash ⭐FREE' },
-            // ⭐ FREE Models - Tier 3
+            { id: 'qwen/qwen3.6-flash', name: 'Qwen 3.6 Flash ⭐FREE' },
+            { id: 'qwen/qwen3.5-9b', name: 'Qwen 3.5 9B ⭐FREE' },
+            // ⭐ FREE Models - Tier 4 (DeepSeek & Others)
             { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat ⭐FREE' },
-            { id: 'google/gemma-4-31b-it', name: 'Gemma 3 31B ⭐FREE' },
-            { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1 ⭐FREE' },
+            { id: 'deepseek/deepseek-chat-v3.1', name: 'DeepSeek V3.1 Chat ⭐FREE' },
+            { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1 ⭐FREE' },
+            { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition', name: 'Dolphin Mistral 24B ⭐FREE' },
+            // ⭐ FREE Models - Tier 5 (Coding & Special)
+            { id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1 (Coding) ⭐FREE' },
+            { id: 'poolside/laguna-xs-2.1:free', name: 'Laguna XS 2.1 ⭐FREE' },
             { id: 'inclusionai/ling-3.0-flash:free', name: 'Ling 3.0 Flash ⭐FREE' },
+            { id: 'cohere/north-mini-code:free', name: 'North Mini Code ⭐FREE' },
             { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra ⭐FREE' },
+            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super ⭐FREE' },
+            { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano ⭐FREE' },
             // 💰 Paid Models
             { id: 'openai/gpt-4o', name: 'GPT-4o (Paid)' },
-            { id: 'openai/gpt-4o-2024-08-06', name: 'GPT-4o (Aug 2024) (Paid)' },
             { id: 'anthropic/claude-opus-5', name: 'Claude Opus 5 (Paid)' },
             { id: 'anthropic/claude-sonnet-5', name: 'Claude Sonnet 5 (Paid)' },
             { id: 'google/gemini-3-pro-image', name: 'Gemini 3 Pro (Paid)' },
             { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro (Paid)' },
-            { id: 'x-ai/grok-2', name: 'Grok-2 (Paid)' },
             { id: 'deepseek/deepseek-v4-pro', name: 'DeepSeek V4 Pro (Paid)' },
+            { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash (Paid)' },
+            { id: 'x-ai/grok-2', name: 'Grok-2 (Paid)' },
+            { id: 'qwen/qwen3.5-plus-02-15', name: 'Qwen 3.5 Plus (Paid)' },
+            { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (Paid)' },
             { id: 'cohere/command-r-plus', name: 'Command R+ (Paid)' }
         ],
         apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
