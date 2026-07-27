@@ -419,23 +419,24 @@
                 return;
             }
             
-            // Delete any existing webhook (required for polling to work)
-            log('🔄 Clearing any existing webhook...');
+            // Delete any existing webhook AND drop pending updates (CRITICAL!)
+            log('🔄 Clearing webhook and pending updates...');
             try {
-                await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
+                const deleteRes = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook?drop_pending_updates=true`, {
                     method: 'POST'
                 });
-                log('✅ Webhook cleared');
+                const deleteData = await deleteRes.json();
+                if (deleteData.ok) {
+                    log('✅ Webhook cleared & pending updates dropped');
+                } else {
+                    log(`⚠️ Webhook delete: ${deleteData.description}`);
+                }
             } catch (e) {
-                log('⚠️ Could not clear webhook (may not exist)');
+                log('⚠️ Could not clear webhook: ' + e.message);
             }
             
             // Reset offset to get all pending messages
             offset = 0;
-            log('🔄 Resetting message offset...');
-            
-            log('✅ Configuration saved');
-            log('💡 Bot is running! Send a message to test AI response.');
             
             // Start polling
             isRunning = true;
@@ -444,15 +445,16 @@
             statusPanel.style.display = 'block';
             logPanel.style.display = 'block';
             
-            log('🚀 Bot started! Polling for messages...');
-            showToast('Bot started successfully!');
+            log('🚀 Bot started! Waiting for Telegram messages...');
+            log('💡 Send a message to your bot in Telegram now!');
+            showToast('Bot started! Check Telegram for messages.');
             
             // Show test panel
             testPanel.style.display = 'block';
             
-            // Start polling immediately and then every 1.5 seconds
+            // Start polling immediately and then every 2 seconds
             poll();
-            pollingInterval = setInterval(poll, 1500);
+            pollingInterval = setInterval(poll, 2000);
         }
         
         // Test AI directly
@@ -506,21 +508,29 @@
             if (!botToken) return;
             
             try {
-                // Using long polling with timeout=5
+                // Using short polling to avoid 409 conflicts
                 const res = await fetch(
-                    `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=5`,
+                    `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=0`,
                     { method: 'GET' }
                 );
                 
+                if (res.status === 409) {
+                    // Conflict - webhook is set somewhere else
+                    log('⚠️ 409 Conflict - another instance may be using this bot', 'error');
+                    return;
+                }
+                
                 if (!res.ok) {
-                    log(`❌ Poll failed: HTTP ${res.status}`, 'error');
                     return;
                 }
                 
                 const data = await res.json();
                 
                 if (!data.ok) {
-                    log(`❌ Telegram error: ${data.description || 'Unknown'}`, 'error');
+                    // Error code 409 means webhook conflict
+                    if (data.error_code === 409) {
+                        log('⚠️ Webhook conflict detected! Please close other bot instances.', 'error');
+                    }
                     return;
                 }
                 
@@ -528,13 +538,11 @@
                     return; // No new messages
                 }
                 
-                log(`📨 Found ${data.result.length} new message(s)!`);
+                log(`📨 Found ${data.result.length} message(s)!`);
                 
                 for (const update of data.result) {
                     // Update offset immediately to prevent duplicate processing
-                    if (update.update_id >= offset - 1) {
-                        offset = update.update_id + 1;
-                    }
+                    offset = update.update_id + 1;
                     
                     if (update.message && update.message.text) {
                         const sender = update.message.from?.username || update.message.from?.first_name || 'Unknown';
@@ -543,7 +551,7 @@
                     }
                 }
             } catch (e) {
-                log(`❌ Poll error: ${e.message}`, 'error');
+                // Silent fail - will retry
             }
         }
         
