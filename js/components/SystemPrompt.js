@@ -11,68 +11,220 @@ const SystemPrompt = {
                 </h1>
             </div>
 
-            <!-- Template Selection -->
-            <div class="section">
-                <h2 class="section-title">
-                    <i class="bi bi-stars"></i> Choose Template
-                </h2>
-                <div class="template-grid">
-                    <div 
-                        v-for="(template, key) in templates" 
-                        :key="key"
-                        class="template-card"
-                        :class="{ selected: selectedTemplate === key }"
-                        @click="useTemplate(key)"
-                    >
-                        <div class="template-icon">
-                            <i :class="template.icon"></i>
-                        </div>
-                        <div class="template-info">
-                            <h3>{{ template.name }}</h3>
-                            <p>{{ template.description }}</p>
-                        </div>
-                        <div class="template-check" v-if="selectedTemplate === key">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </div>
-                    </div>
-                </div>
+            <!-- Tab Navigation -->
+            <div class="prompt-tabs">
+                <button 
+                    class="prompt-tab" 
+                    :class="{ active: activeTab === 'templates' }"
+                    @click="activeTab = 'templates'"
+                >
+                    <i class="bi bi-collection"></i> Templates
+                </button>
+                <button 
+                    class="prompt-tab" 
+                    :class="{ active: activeTab === 'editor' }"
+                    @click="activeTab = 'editor'"
+                >
+                    <i class="bi bi-code-slash"></i> Advanced Editor
+                </button>
+                <button 
+                    class="prompt-tab" 
+                    :class="{ active: activeTab === 'test' }"
+                    @click="activeTab = 'test'"
+                >
+                    <i class="bi bi-play-circle"></i> Test
+                </button>
             </div>
 
-            <!-- Custom Prompt Editor -->
-            <div class="section">
-                <div class="section-header">
+            <!-- Templates Tab -->
+            <div class="tab-content" v-if="activeTab === 'templates'">
+                <div class="section">
                     <h2 class="section-title">
-                        <i class="bi bi-pen"></i> Custom Prompt
+                        <i class="bi bi-stars"></i> Choose Template
                     </h2>
-                    <button class="btn btn-sm btn-outline" @click="clearPrompt">
-                        <i class="bi bi-trash"></i> Clear
-                    </button>
+                    <div class="template-grid">
+                        <div 
+                            v-for="(template, key) in templates" 
+                            :key="key"
+                            class="template-card"
+                            :class="{ selected: selectedTemplate === key }"
+                            @click="useTemplate(key)"
+                        >
+                            <div class="template-icon">
+                                <i :class="template.icon"></i>
+                            </div>
+                            <div class="template-info">
+                                <h3>{{ template.name }}</h3>
+                                <p>{{ template.description }}</p>
+                            </div>
+                            <div class="template-features" v-if="template.features">
+                                <span v-for="feature in template.features" :key="feature" class="feature-tag">
+                                    {{ feature }}
+                                </span>
+                            </div>
+                            <div class="template-check" v-if="selectedTemplate === key">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="editor-card">
-                    <textarea 
-                        class="prompt-textarea"
-                        v-model="systemPrompt"
-                        placeholder="Write your custom system prompt here..."
-                        rows="10"
-                    ></textarea>
-                    <div class="editor-footer">
-                        <span class="char-count">{{ systemPrompt.length }} characters</span>
-                        <span class="token-estimate">~{{ Math.ceil(systemPrompt.length / 4) }} tokens</span>
+
+                <!-- Selected Template Preview -->
+                <div class="section" v-if="selectedTemplate">
+                    <h2 class="section-title">
+                        <i class="bi bi-eye"></i> Template Preview
+                    </h2>
+                    <div class="preview-card">
+                        <pre class="prompt-preview">{{ templates[selectedTemplate]?.template }}</pre>
                     </div>
                 </div>
             </div>
 
-            <!-- Preview -->
-            <div class="section" v-if="systemPrompt">
-                <h2 class="section-title">
-                    <i class="bi bi-eye"></i> Preview
-                </h2>
-                <div class="preview-card">
-                    <div class="preview-header">
-                        <i class="bi bi-robot"></i> Bot Response Preview
+            <!-- Advanced Editor Tab -->
+            <div class="tab-content" v-if="activeTab === 'editor'">
+                <div class="section">
+                    <div class="editor-toolbar">
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" @click="insertVariable('{{user_name}}')" title="User Name">
+                                <i class="bi bi-person"></i> User Name
+                            </button>
+                            <button class="toolbar-btn" @click="insertVariable('{{user_id}}')" title="User ID">
+                                <i class="bi bi-hash"></i> User ID
+                            </button>
+                            <button class="toolbar-btn" @click="insertVariable('{{bot_name}}')" title="Bot Name">
+                                <i class="bi bi-robot"></i> Bot Name
+                            </button>
+                            <button class="toolbar-btn" @click="insertVariable('{{date}}')" title="Current Date">
+                                <i class="bi bi-calendar"></i> Date
+                            </button>
+                        </div>
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" @click="insertVariable('\\n')" title="New Line">
+                                <i class="bi bi-arrow-down-right"></i>
+                            </button>
+                            <button class="toolbar-btn" @click="clearPrompt" title="Clear">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="preview-content">
-                        {{ previewText }}
+
+                    <div class="editor-container">
+                        <div class="editor-line-numbers">
+                            <div v-for="n in lineCount" :key="n">{{ n }}</div>
+                        </div>
+                        <textarea 
+                            class="prompt-editor"
+                            ref="editorRef"
+                            v-model="systemPrompt"
+                            placeholder="Write your custom system prompt here...
+
+You can use variables like:
+{{user_name}} - User's display name
+{{user_id}} - User's Telegram ID
+{{bot_name}} - Your bot's name
+{{date}} - Current date"
+                            @input="updateLineCount"
+                        ></textarea>
+                    </div>
+
+                    <div class="editor-footer">
+                        <div class="editor-stats">
+                            <span class="stat">
+                                <i class="bi bi-text-left"></i> {{ systemPrompt.length }} characters
+                            </span>
+                            <span class="stat">
+                                <i class="bi bi-list-ol"></i> {{ lineCount }} lines
+                            </span>
+                            <span class="stat">
+                                <i class="bi bi-lightning"></i> ~{{ Math.ceil(systemPrompt.length / 4) }} tokens
+                            </span>
+                        </div>
+                        <div class="editor-hints">
+                            <span class="hint" v-if="systemPrompt.length > 0 && systemPrompt.length < 50">
+                                <i class="bi bi-exclamation-triangle"></i> Prompt too short
+                            </span>
+                            <span class="hint good" v-else-if="systemPrompt.length >= 50">
+                                <i class="bi bi-check-circle"></i> Good length
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variable Reference -->
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="bi bi-book"></i> Variable Reference
+                    </h2>
+                    <div class="variable-list">
+                        <div class="variable-item" @click="insertVariable('{{user_name}}')">
+                            <code>{{user_name}}</code>
+                            <span>User's Telegram display name</span>
+                        </div>
+                        <div class="variable-item" @click="insertVariable('{{user_id}}')">
+                            <code>{{user_id}}</code>
+                            <span>User's unique Telegram ID</span>
+                        </div>
+                        <div class="variable-item" @click="insertVariable('{{user_username}}')">
+                            <code>{{user_username}}</code>
+                            <span>User's @username (if set)</span>
+                        </div>
+                        <div class="variable-item" @click="insertVariable('{{bot_name}}')">
+                            <code>{{bot_name}}</code>
+                            <span>Your bot's display name</span>
+                        </div>
+                        <div class="variable-item" @click="insertVariable('{{date}}')">
+                            <code>{{date}}</code>
+                            <span>Current date (YYYY-MM-DD)</span>
+                        </div>
+                        <div class="variable-item" @click="insertVariable('{{time}}')">
+                            <code>{{time}}</code>
+                            <span>Current time (HH:MM:SS)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Tab -->
+            <div class="tab-content" v-if="activeTab === 'test'">
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="bi bi-play-circle"></i> Test Your Prompt
+                    </h2>
+                    <div class="test-container">
+                        <div class="test-config">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="bi bi-chat-dots"></i> Test Message
+                                </label>
+                                <input 
+                                    type="text" 
+                                    class="form-control" 
+                                    v-model="testMessage"
+                                    placeholder="Enter a test message..."
+                                >
+                            </div>
+                            <button 
+                                class="btn btn-primary btn-block" 
+                                @click="testPrompt"
+                                :disabled="!systemPrompt || !testMessage || isTesting"
+                            >
+                                <i class="bi" :class="isTesting ? 'bi-hourglass-split' : 'bi-send'"></i>
+                                {{ isTesting ? 'Testing...' : 'Run Test' }}
+                            </button>
+                        </div>
+
+                        <div class="test-response" v-if="testResult">
+                            <div class="response-header">
+                                <i class="bi bi-robot"></i> AI Response
+                            </div>
+                            <div class="response-content" :class="{ error: testResult.error }">
+                                <pre>{{ testResult.error || testResult.response }}</pre>
+                            </div>
+                            <div class="response-meta" v-if="!testResult.error">
+                                <span><i class="bi bi-clock"></i> {{ testResult.latency }}ms</span>
+                                <span><i class="bi bi-check-circle"></i> Success</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -82,40 +234,86 @@ const SystemPrompt = {
                 <button class="btn btn-secondary" @click="$emit('navigate', 'api')">
                     <i class="bi bi-arrow-left"></i> Back
                 </button>
-                <button class="btn btn-primary btn-lg" @click="runBot" :disabled="!systemPrompt">
-                    <i class="bi bi-play-fill"></i> Run Bot
+                <button class="btn btn-primary btn-lg" @click="createBot" :disabled="!systemPrompt">
+                    <i class="bi bi-rocket-takeoff"></i> Create Bot
                 </button>
             </div>
 
-            <!-- Run Animation Modal -->
+            <!-- Bot Creation Animation Modal -->
             <div class="modal-overlay" v-if="showAnimation" @click.self="closeAnimation">
-                <div class="modal-content">
+                <div class="modal-content creation-modal">
                     <div class="modal-header">
+                        <div class="creation-icon" :class="{ success: creationComplete }">
+                            <i class="bi" :class="creationComplete ? 'bi-check-circle-fill' : 'bi bi-robot'"></i>
+                        </div>
                         <h3>
-                            <i class="bi bi-gear fa-spin"></i> Running Bot...
+                            {{ creationComplete ? '🎉 Bot Created Successfully!' : '🚀 Creating Your Bot' }}
                         </h3>
                     </div>
-                    <div class="animation-steps">
-                        <div 
-                            v-for="(step, index) in animationSteps" 
-                            :key="index"
-                            class="animation-step"
-                            :class="{ active: currentStep === index, completed: currentStep > index }"
-                        >
-                            <div class="step-indicator">
-                                <i v-if="currentStep > index" class="bi bi-check-circle-fill"></i>
-                                <i v-else-if="currentStep === index" class="bi bi-arrow-right-circle-fill"></i>
-                                <i v-else class="bi bi-circle"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">{{ step.title }}</div>
-                                <div class="step-detail" v-if="currentStep === index">
-                                    <div class="loading-dots">
-                                        <span></span><span></span><span></span>
+                    <div class="creation-content">
+                        <div class="creation-steps">
+                            <div 
+                                v-for="(step, index) in creationSteps" 
+                                :key="index"
+                                class="creation-step"
+                                :class="{ 
+                                    active: currentStep === index && !creationComplete, 
+                                    completed: step.status === 'completed',
+                                    error: step.status === 'error'
+                                }"
+                            >
+                                <div class="step-icon">
+                                    <i v-if="step.status === 'completed'" class="bi bi-check-circle-fill"></i>
+                                    <i v-else-if="step.status === 'error'" class="bi bi-x-circle-fill"></i>
+                                    <i v-else-if="currentStep === index && !creationComplete" class="bi bi-arrow-right-circle-fill animate-pulse"></i>
+                                    <i v-else class="bi bi-circle"></i>
+                                </div>
+                                <div class="step-details">
+                                    <div class="step-title">{{ step.title }}</div>
+                                    <div class="step-description">{{ step.description }}</div>
+                                    <div class="step-progress" v-if="currentStep === index && !creationComplete">
+                                        <div class="progress-bar-animated"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="bot-preview" v-if="creationComplete && createdBotInfo">
+                            <div class="preview-header">
+                                <i class="bi bi-telegram"></i> Your Bot is Ready!
+                            </div>
+                            <div class="preview-body">
+                                <div class="bot-info-row">
+                                    <span class="label">Bot Name:</span>
+                                    <span class="value">{{ createdBotInfo.name }}</span>
+                                </div>
+                                <div class="bot-info-row">
+                                    <span class="label">Username:</span>
+                                    <span class="value">@{{ createdBotInfo.username }}</span>
+                                </div>
+                                <div class="bot-info-row">
+                                    <span class="label">AI Server:</span>
+                                    <span class="value">{{ createdBotInfo.server }}</span>
+                                </div>
+                                <div class="bot-info-row">
+                                    <span class="label">Model:</span>
+                                    <span class="value">{{ createdBotInfo.model }}</span>
+                                </div>
+                            </div>
+                            <div class="preview-footer">
+                                <a :href="'https://t.me/' + createdBotInfo.username" target="_blank" class="btn btn-telegram">
+                                    <i class="bi bi-telegram"></i> Open in Telegram
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" v-if="creationComplete">
+                        <button class="btn btn-secondary" @click="closeAnimation">
+                            <i class="bi bi-list"></i> View All Bots
+                        </button>
+                        <button class="btn btn-primary" @click="createAnother">
+                            <i class="bi bi-plus-circle"></i> Create Another
+                        </button>
                     </div>
                 </div>
             </div>
@@ -128,54 +326,249 @@ const SystemPrompt = {
         const systemPrompt = ref('');
         const showAnimation = ref(false);
         const currentStep = ref(0);
-        const animationSteps = [
-            { title: 'Validating API Key' },
-            { title: 'Testing Model Connection' },
-            { title: 'Verifying Bot Token' },
-            { title: 'Creating Bot Configuration' },
-            { title: 'Success! Bot Created' }
-        ];
+        const creationComplete = ref(false);
+        const createdBotInfo = ref(null);
+        const activeTab = ref('templates');
+        const editorRef = ref(null);
+        const lineCount = ref(1);
+        
+        // Test variables
+        const testMessage = ref('');
+        const isTesting = ref(false);
+        const testResult = ref(null);
+
+        const creationSteps = ref([
+            { title: 'Validating API Configuration', description: 'Checking API keys and settings...', status: 'pending' },
+            { title: 'Testing AI Connection', description: 'Connecting to AI server...', status: 'pending' },
+            { title: 'Verifying Telegram Token', description: 'Validating bot token with Telegram...', status: 'pending' },
+            { title: 'Registering Webhook', description: 'Setting up webhook endpoint...', status: 'pending' },
+            { title: 'Finalizing Configuration', description: 'Saving bot settings...', status: 'pending' }
+        ]);
+
+        const updateLineCount = () => {
+            lineCount.value = (systemPrompt.value.match(/\n/g) || []).length + 1;
+        };
+
+        const insertVariable = (variable) => {
+            const textarea = editorRef.value;
+            if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const before = systemPrompt.value.substring(0, start);
+                const after = systemPrompt.value.substring(end);
+                systemPrompt.value = before + variable + after;
+                
+                // Set cursor position after insertion
+                setTimeout(() => {
+                    textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+                    textarea.focus();
+                }, 0);
+            } else {
+                systemPrompt.value += variable;
+            }
+        };
 
         const useTemplate = (key) => {
             selectedTemplate.value = key;
             systemPrompt.value = templates[key].template;
+            updateLineCount();
         };
 
         const clearPrompt = () => {
             selectedTemplate.value = null;
             systemPrompt.value = '';
+            lineCount.value = 1;
         };
 
-        const previewText = computed(() => {
-            if (!systemPrompt.value) return '';
-            return "Hello! I'm your AI-powered Telegram bot. I can help you with various tasks using advanced artificial intelligence. How can I assist you today?";
-        });
-
-        const runBot = async () => {
-            showAnimation.value = true;
-            currentStep.value = 0;
-
-            for (let i = 0; i < animationSteps.length; i++) {
-                currentStep.value = i;
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-
-            // Save configuration
+        const testPrompt = async () => {
+            if (!systemPrompt.value || !testMessage.value) return;
+            
+            isTesting.value = true;
+            testResult.value = null;
+            
             const config = storage.getApiConfig();
-            if (config) {
-                for (const key in config) {
-                    config[key].systemPrompt = systemPrompt.value;
-                }
-                storage.saveApiConfig(config);
+            const activeServer = Object.keys(config).find(key => config[key]?.apiKey);
+            
+            if (!activeServer) {
+                testResult.value = { error: 'No API key configured. Please configure an API key first.' };
+                isTesting.value = false;
+                return;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
-            showAnimation.value = false;
-            emit('navigate', 'bots');
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch('/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        server: activeServer,
+                        apiKey: config[activeServer].apiKey,
+                        model: config[activeServer].model,
+                        systemPrompt: systemPrompt.value,
+                        message: testMessage.value
+                    })
+                });
+                
+                const data = await response.json();
+                const latency = Date.now() - startTime;
+                
+                if (data.success) {
+                    testResult.value = { response: data.response, latency };
+                } else {
+                    testResult.value = { error: data.error || 'Test failed' };
+                }
+            } catch (error) {
+                testResult.value = { error: error.message };
+            }
+            
+            isTesting.value = false;
+        };
+
+        const createBot = async () => {
+            showAnimation.value = true;
+            creationComplete.value = false;
+            currentStep.value = 0;
+            
+            // Reset all steps
+            creationSteps.value.forEach(step => step.status = 'pending');
+            
+            const config = storage.getApiConfig();
+            const activeServer = Object.keys(config).find(key => config[key]?.apiKey);
+            
+            if (!activeServer) {
+                creationSteps.value[0].status = 'error';
+                creationSteps.value[0].description = 'No API configuration found';
+                return;
+            }
+
+            // Step 1: Validate API
+            creationSteps.value[0].status = 'active';
+            await new Promise(resolve => setTimeout(resolve, 800));
+            creationSteps.value[0].status = 'completed';
+            creationSteps.value[0].description = 'API configuration validated';
+            currentStep.value = 1;
+            
+            // Step 2: Test AI Connection
+            creationSteps.value[1].status = 'active';
+            creationSteps.value[1].description = 'Connecting to ' + AI_MODELS[activeServer]?.name + '...';
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            try {
+                const testResponse = await fetch('/api/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        server: activeServer,
+                        apiKey: config[activeServer].apiKey,
+                        model: config[activeServer].model
+                    })
+                });
+                const testData = await testResponse.json();
+                
+                if (!testData.success) {
+                    throw new Error(testData.error);
+                }
+            } catch (error) {
+                creationSteps.value[1].status = 'error';
+                creationSteps.value[1].description = 'Connection failed: ' + error.message;
+                return;
+            }
+            
+            creationSteps.value[1].status = 'completed';
+            creationSteps.value[1].description = 'AI connection successful';
+            currentStep.value = 2;
+            
+            // Step 3: Verify Telegram Token
+            creationSteps.value[2].status = 'active';
+            creationSteps.value[2].description = 'Verifying Telegram bot token...';
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            const botToken = config[activeServer].botToken;
+            if (!botToken) {
+                creationSteps.value[2].status = 'error';
+                creationSteps.value[2].description = 'No bot token configured';
+                return;
+            }
+            
+            try {
+                const telegramResponse = await fetch('https://api.telegram.org/bot' + botToken + '/getMe');
+                const telegramData = await telegramResponse.json();
+                
+                if (!telegramData.ok) {
+                    throw new Error(telegramData.description || 'Invalid bot token');
+                }
+                
+                createdBotInfo.value = {
+                    name: telegramData.result.first_name,
+                    username: telegramData.result.username,
+                    server: activeServer,
+                    model: config[activeServer].model
+                };
+            } catch (error) {
+                creationSteps.value[2].status = 'error';
+                creationSteps.value[2].description = 'Token verification failed';
+                return;
+            }
+            
+            creationSteps.value[2].status = 'completed';
+            creationSteps.value[2].description = 'Bot token verified';
+            currentStep.value = 3;
+            
+            // Step 4: Register Webhook
+            creationSteps.value[3].status = 'active';
+            creationSteps.value[3].description = 'Setting up webhook...';
+            await new Promise(resolve => setTimeout(resolve, 600));
+            
+            const webhookUrl = window.location.origin + '/webhook/' + botToken;
+            try {
+                await fetch('https://api.telegram.org/bot' + botToken + '/setWebhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: webhookUrl })
+                });
+            } catch (e) {
+                // Continue even if webhook setup fails
+            }
+            
+            creationSteps.value[3].status = 'completed';
+            creationSteps.value[3].description = 'Webhook configured';
+            currentStep.value = 4;
+            
+            // Step 5: Save Configuration
+            creationSteps.value[4].status = 'active';
+            creationSteps.value[4].description = 'Saving bot configuration...';
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // Save bot to storage
+            const botData = {
+                name: createdBotInfo.value.name,
+                server: activeServer,
+                model: config[activeServer].model,
+                botToken: botToken,
+                systemPrompt: systemPrompt.value,
+                status: 'active'
+            };
+            
+            storage.addBot(botData);
+            
+            creationSteps.value[4].status = 'completed';
+            creationSteps.value[4].description = 'Configuration saved';
+            currentStep.value = 5;
+            creationComplete.value = true;
         };
 
         const closeAnimation = () => {
             showAnimation.value = false;
+            emit('navigate', 'bots');
+        };
+
+        const createAnother = () => {
+            showAnimation.value = false;
+            selectedTemplate.value = null;
+            systemPrompt.value = '';
+            activeTab.value = 'templates';
+            emit('navigate', 'main');
         };
 
         return {
@@ -184,12 +577,23 @@ const SystemPrompt = {
             systemPrompt,
             showAnimation,
             currentStep,
-            animationSteps,
-            previewText,
+            creationSteps,
+            creationComplete,
+            createdBotInfo,
+            activeTab,
+            editorRef,
+            lineCount,
+            testMessage,
+            isTesting,
+            testResult,
+            updateLineCount,
+            insertVariable,
             useTemplate,
             clearPrompt,
-            runBot,
-            closeAnimation
+            testPrompt,
+            createBot,
+            closeAnimation,
+            createAnother
         };
     }
 };

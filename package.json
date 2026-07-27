@@ -1,23 +1,31 @@
 {
-  "name": "project",
-  "version": "1.0.0",
+  "name": "telegram-bot-maker",
+  "version": "2.0.0",
   "description": "Create intelligent Telegram bots powered by cutting-edge AI services with an easy-to-use web interface.",
-  "main": "index.js",
+  "main": "api/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node api/server.js",
+    "dev": "node api/server.js",
+    "test": "echo \"No tests configured\" && exit 0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://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@github.com/amkyawdev/telegram-bot-maker.git"
+    "url": "git+https://github.com/amkyawdev/telegram-bot-maker.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "telegram",
+    "bot",
+    "ai",
+    "chatbot",
+    "gemini",
+    "claude",
+    "openai"
+  ],
+  "author": "amkyawdev",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/amkyawdev/telegram-bot-maker/issues"
   },
   "homepage": "https://github.com/amkyawdev/telegram-bot-maker#readme",
-  "dependencies": {
-    "vercel": "^57.0.0"
-  }
+  "dependencies": {}
 }
