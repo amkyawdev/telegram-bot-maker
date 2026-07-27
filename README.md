@@ -29,12 +29,35 @@ Create intelligent Telegram bots powered by OpenRouter AI with an easy-to-use we
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - OpenRouter API Key
 
-### Installation
+### Option 1: Local Setup (No Server Required!)
 
 1. Clone or download this repository
 2. Open `index.html` in your web browser
-3. Configure your OpenRouter API key in the "API Config" section
-4. Create your first AI-powered bot!
+3. Configure your OpenRouter API key
+4. Go to **API Config** → Enter **Webhook URL** (see Option 2 or 3 below)
+5. Create your first AI-powered bot!
+
+### Option 2: Deploy to Railway (Recommended for Polling)
+
+Railway offers **free tier** with persistent servers - perfect for Telegram bot polling!
+
+1. Go to [Railway.app](https://railway.app) and sign up
+2. Click **New Project** → **Deploy from GitHub**
+3. Connect your GitHub repo
+4. Railway auto-detects Node.js
+5. Set environment variables:
+   - `PORT` = `3000`
+6. Get your Railway URL (e.g., `https://telegram-bot-maker.up.railway.app`)
+7. Use this URL as your **Webhook URL** in the app
+
+### Option 3: Deploy to Vercel (Webhook Mode)
+
+Vercel uses serverless functions - you must provide a **Webhook URL**!
+
+1. Deploy to Vercel via GitHub
+2. Get your Vercel deployment URL
+3. In the app, enter your **Webhook URL**: `https://your-app.vercel.app/webhook/{BOT_TOKEN}`
+4. The bot will respond via webhooks (polling won't work on Vercel)
 
 ### OpenRouter Setup
 
