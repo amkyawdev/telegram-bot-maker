@@ -276,7 +276,7 @@ You can use variables like:
                 <div class="modal-content creation-modal">
                     <!-- Confetti container -->
                     <div class="confetti-container" v-if="creationComplete">
-                        <div class="confetti" v-for="i in 20" :key="i" :style="{ '--delay': i * 0.1 + 's', '--x': Math.random() * 100 + '%' }"></div>
+                        <div class="confetti" v-for="conf in confettiItems" :key="conf.id" :style="{ '--delay': conf.delay, '--x': conf.x }"></div>
                     </div>
                     
                     <div class="modal-header">
@@ -415,6 +415,14 @@ You can use variables like:
         
         const hasError = computed(() => {
             return creationSteps.value.some(step => step.status === 'error');
+        });
+        
+        const confettiItems = computed(() => {
+            return Array.from({ length: 20 }, (_, i) => ({
+                id: i,
+                delay: (i * 0.1) + 's',
+                x: Math.floor(Math.random() * 100) + '%'
+            }));
         });
         
         const getIconClass = () => {
@@ -825,6 +833,7 @@ You can use variables like:
             chatMessages,
             hasConfig,
             hasError,
+            confettiItems,
             getIconClass,
             getHeaderText,
             getModelDisplayName,
