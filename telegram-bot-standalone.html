@@ -360,14 +360,9 @@
             const aiModel = document.getElementById('aiModel').value;
             const systemPrompt = document.getElementById('systemPrompt').value.trim();
             
-            // Validation
-            if (!apiKey || !apiKey.startsWith('sk-')) {
-                log('OpenRouter API Key must start with "sk-"', 'error');
-                showToast('Invalid OpenRouter API Key! Must start with "sk-"', 'error');
-                return;
-            }
-            if (apiKey.length < 30) {
-                log('OpenRouter API Key too short', 'error');
+            // Validation - OpenRouter keys start with sk-or-v1- or sk-
+            if (!apiKey || apiKey.length < 20) {
+                log('OpenRouter API Key is too short', 'error');
                 showToast('Invalid OpenRouter API Key!', 'error');
                 return;
             }
@@ -390,44 +385,17 @@
                     showToast('Invalid Telegram Bot Token!', 'error');
                     return;
                 }
-                log(`Bot verified: @${testData.result.username}`);
+                log(`✅ Bot verified: @${testData.result.username}`);
             } catch (e) {
-                log('Telegram API error: ' + e.message, 'error');
+                log('❌ Telegram API error: ' + e.message, 'error');
                 showToast('Cannot connect to Telegram!', 'error');
                 return;
             }
             
-            // Test OpenRouter API
-            log('Testing OpenRouter API...');
-            try {
-                const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://github.com/amkyawdev/telegram-bot-maker',
-                        'X-Title': 'Telegram AI Bot'
-                    },
-                    body: JSON.stringify({
-                        model: aiModel,
-                        messages: [{ role: 'user', content: 'Say "OK"' }],
-                        max_tokens: 10
-                    })
-                });
-                
-                const errData = await orRes.json();
-                
-                if (!orRes.ok) {
-                    log('OpenRouter error: ' + (errData.error?.message || JSON.stringify(errData)), 'error');
-                    showToast('Invalid OpenRouter API Key!', 'error');
-                    return;
-                }
-                log('OpenRouter API verified');
-            } catch (e) {
-                log('OpenRouter error: ' + e.message, 'error');
-                showToast('Cannot connect to OpenRouter!', 'error');
-                return;
-            }
+            // Skip API test - go straight to polling
+            // API will be tested when first message comes
+            log('✅ Configuration saved');
+            log('💡 Bot is running! Send a message to test AI response.');
             
             // Start polling
             isRunning = true;
@@ -540,9 +508,11 @@
             const systemPrompt = document.getElementById('systemPrompt').value.trim() || 
                 'You are a helpful, friendly AI assistant.';
             
-            if (!apiKey || !apiKey.startsWith('sk-')) {
-                return '⚠️ Please configure your OpenRouter API Key first!';
+            if (!apiKey || apiKey.length < 20) {
+                return '⚠️ OpenRouter API Key not configured!';
             }
+            
+            log(`🤖 Calling AI: ${aiModel}...`);
             
             try {
                 const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -550,8 +520,8 @@
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://telegram-bot-maker.app',
-                        'X-Title': 'Telegram AI Bot Standalone'
+                        'HTTP-Referer': 'https://github.com/amkyawdev/telegram-bot-maker',
+                        'X-Title': 'Telegram AI Bot'
                     },
                     body: JSON.stringify({
                         model: aiModel,
@@ -567,15 +537,34 @@
                 const data = await res.json();
                 
                 if (!res.ok) {
-                    const errorMsg = data.error?.message || data.error?.code || 'Unknown error';
-                    console.error('OpenRouter Error:', data);
+                    const errorMsg = data.error?.message || data.error?.code || JSON.stringify(data);
+                    log(`❌ AI Error: ${errorMsg}`, 'error');
+                    
+                    // Handle common errors
+                    if (errorMsg.includes('provider') || errorMsg.includes('Provider')) {
+                        return '⚠️ AI Provider Error. Please check your API key and try again.\n\nTips:\n• Verify your OpenRouter key is valid\n• Check if the model is available\n• Try a different model';
+                    }
+                    if (errorMsg.includes('Invalid') || errorMsg.includes('invalid')) {
+                        return '⚠️ Invalid API Key! Please check your OpenRouter API key.';
+                    }
+                    if (errorMsg.includes('quota') || errorMsg.includes('limit')) {
+                        return '⚠️ API quota exceeded. Please check your OpenRouter account.';
+                    }
+                    
                     return `⚠️ AI Error: ${errorMsg}`;
                 }
                 
-                return data.choices?.[0]?.message?.content || 'No response from AI';
+                const response = data.choices?.[0]?.message?.content;
+                if (!response) {
+                    return '⚠️ Empty response from AI. Please try again.';
+                }
+                
+                log('✅ AI response received');
+                return response;
+                
             } catch (e) {
-                console.error('Fetch Error:', e);
-                return '⚠️ Connection Error: ' + e.message;
+                log(`❌ Connection Error: ${e.message}`, 'error');
+                return '⚠️ Connection failed. Check your internet connection.';
             }
         }
         
