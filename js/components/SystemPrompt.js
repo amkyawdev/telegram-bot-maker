@@ -380,6 +380,45 @@ You can use variables like:
             lineCount.value = 1;
         };
 
+        // Test prompt with OpenRouter directly
+        const testPromptWithOpenRouter = async (apiKey, model, systemPrompt, message) => {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': 'https://telegram-bot-maker.app',
+                    'X-Title': 'Telegram Bot Maker'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: message }
+                    ],
+                    temperature: 0.9,
+                    max_tokens: 2048
+                })
+            });
+            
+            const text = await response.text();
+            
+            if (!response.ok) {
+                try {
+                    const errorData = JSON.parse(text);
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+                } catch (e) {
+                    if (e instanceof SyntaxError) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    throw e;
+                }
+            }
+            
+            const data = JSON.parse(text);
+            return data.choices?.[0]?.message?.content || 'No response';
+        };
+
         const testPrompt = async () => {
             if (!systemPrompt.value || !testMessage.value) return;
             
@@ -387,10 +426,10 @@ You can use variables like:
             testResult.value = null;
             
             const config = storage.getApiConfig();
-            const activeServer = Object.keys(config).find(key => config[key]?.apiKey);
+            const openrouterConfig = config?.openrouter;
             
-            if (!activeServer) {
-                testResult.value = { error: 'No API key configured. Please configure an API key first.' };
+            if (!openrouterConfig?.apiKey) {
+                testResult.value = { error: 'No OpenRouter API key configured. Please configure an API key first.' };
                 isTesting.value = false;
                 return;
             }
@@ -398,26 +437,14 @@ You can use variables like:
             const startTime = Date.now();
             
             try {
-                const response = await fetch('/api/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        server: activeServer,
-                        apiKey: config[activeServer].apiKey,
-                        model: config[activeServer].model,
-                        systemPrompt: systemPrompt.value,
-                        message: testMessage.value
-                    })
-                });
-                
-                const data = await response.json();
+                const response = await testPromptWithOpenRouter(
+                    openrouterConfig.apiKey,
+                    openrouterConfig.model,
+                    systemPrompt.value,
+                    testMessage.value
+                );
                 const latency = Date.now() - startTime;
-                
-                if (data.success) {
-                    testResult.value = { response: data.response, latency };
-                } else {
-                    testResult.value = { error: data.error || 'Test failed' };
-                }
+                testResult.value = { response, latency };
             } catch (error) {
                 testResult.value = { error: error.message };
             }
@@ -434,11 +461,12 @@ You can use variables like:
             creationSteps.value.forEach(step => step.status = 'pending');
             
             const config = storage.getApiConfig();
-            const activeServer = Object.keys(config).find(key => config[key]?.apiKey);
+            const openrouterConfig = config?.openrouter;
             
-            if (!activeServer) {
+            if (!openrouterConfig?.apiKey) {
                 creationSteps.value[0].status = 'error';
-                creationSteps.value[0].description = 'No API configuration found';
+                creationSteps.value[0].description = 'No OpenRouter API configuration found';
+                showAnimation.value = false;
                 return;
             }
 
@@ -449,29 +477,22 @@ You can use variables like:
             creationSteps.value[0].description = 'API configuration validated';
             currentStep.value = 1;
             
-            // Step 2: Test AI Connection
+            // Step 2: Test OpenRouter AI Connection
             creationSteps.value[1].status = 'active';
-            creationSteps.value[1].description = 'Connecting to ' + AI_MODELS[activeServer]?.name + '...';
+            creationSteps.value[1].description = 'Connecting to OpenRouter...';
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             try {
-                const testResponse = await fetch('/api/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        server: activeServer,
-                        apiKey: config[activeServer].apiKey,
-                        model: config[activeServer].model
-                    })
-                });
-                const testData = await testResponse.json();
-                
-                if (!testData.success) {
-                    throw new Error(testData.error);
-                }
+                await testPromptWithOpenRouter(
+                    openrouterConfig.apiKey,
+                    openrouterConfig.model,
+                    'You are a test bot. Say "OK" if you can hear me.',
+                    'test'
+                );
             } catch (error) {
                 creationSteps.value[1].status = 'error';
                 creationSteps.value[1].description = 'Connection failed: ' + error.message;
+                showAnimation.value = false;
                 return;
             }
             
@@ -484,16 +505,24 @@ You can use variables like:
             creationSteps.value[2].description = 'Verifying Telegram bot token...';
             await new Promise(resolve => setTimeout(resolve, 800));
             
-            const botToken = config[activeServer].botToken;
+            const botToken = openrouterConfig.botToken;
             if (!botToken) {
                 creationSteps.value[2].status = 'error';
                 creationSteps.value[2].description = 'No bot token configured';
+                showAnimation.value = false;
                 return;
             }
             
             try {
                 const telegramResponse = await fetch('https://api.telegram.org/bot' + botToken + '/getMe');
-                const telegramData = await telegramResponse.json();
+                const text = await telegramResponse.text();
+                let telegramData;
+                
+                try {
+                    telegramData = JSON.parse(text);
+                } catch {
+                    throw new Error('Invalid response from Telegram');
+                }
                 
                 if (!telegramData.ok) {
                     throw new Error(telegramData.description || 'Invalid bot token');
@@ -502,12 +531,13 @@ You can use variables like:
                 createdBotInfo.value = {
                     name: telegramData.result.first_name,
                     username: telegramData.result.username,
-                    server: activeServer,
-                    model: config[activeServer].model
+                    server: 'openrouter',
+                    model: openrouterConfig.model
                 };
             } catch (error) {
                 creationSteps.value[2].status = 'error';
-                creationSteps.value[2].description = 'Token verification failed';
+                creationSteps.value[2].description = 'Token verification failed: ' + error.message;
+                showAnimation.value = false;
                 return;
             }
             
@@ -543,8 +573,8 @@ You can use variables like:
             // Save bot to storage
             const botData = {
                 name: createdBotInfo.value.name,
-                server: activeServer,
-                model: config[activeServer].model,
+                server: 'openrouter',
+                model: openrouterConfig.model,
                 botToken: botToken,
                 systemPrompt: systemPrompt.value,
                 status: 'active'
@@ -556,6 +586,7 @@ You can use variables like:
             creationSteps.value[4].description = 'Configuration saved';
             currentStep.value = 5;
             creationComplete.value = true;
+            showAnimation.value = false;
         };
 
         const closeAnimation = () => {
