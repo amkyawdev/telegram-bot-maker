@@ -1,6 +1,7 @@
 /**
  * Telegram Bot Maker - Backend Server
  * Handles Telegram webhooks and OpenRouter AI API communication
+ * Supports both Webhook and Polling modes
  */
 
 const http = require('http');
@@ -9,6 +10,10 @@ const crypto = require('crypto');
 
 // In-memory bot configurations (in production, use a database)
 const botConfigs = new Map();
+
+// Polling state
+let pollingIntervals = new Map();
+const POLLING_TIMEOUT = 50; // Telegram long polling timeout in seconds
 
 // OpenRouter AI handler
 const AI_HANDLERS = {
@@ -86,6 +91,153 @@ async function sendTelegramMessage(botToken, chatId, text, replyToMessageId = nu
     });
     
     return response.json();
+}
+
+// Telegram Long Polling - Auto Webhook Alternative
+async function startPolling(botToken) {
+    if (pollingIntervals.has(botToken)) {
+        console.log(`Polling already started for bot: ${botToken.substring(0, 10)}...`);
+        return;
+    }
+
+    let offset = 0;
+    console.log(`🚀 Starting auto-polling for bot: ${botToken.substring(0, 10)}...`);
+
+    async function poll() {
+        try {
+            const response = await fetch(
+                `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=${POLLING_TIMEOUT}`,
+                { method: 'GET' }
+            );
+            
+            if (!response.ok) {
+                console.error(`Polling error for bot ${botToken.substring(0, 10)}: HTTP ${response.status}`);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (!data.ok || !data.result || data.result.length === 0) {
+                return; // No updates, continue polling
+            }
+
+            // Process each update
+            for (const update of data.result) {
+                offset = update.update_id + 1;
+                
+                // Process message updates
+                if (update.message && update.message.text) {
+                    const messageData = {
+                        type: 'message',
+                        chatId: update.message.chat.id,
+                        messageId: update.message.message_id,
+                        text: update.message.text,
+                        from: {
+                            id: update.message.from.id,
+                            firstName: update.message.from.first_name,
+                            username: update.message.from.username
+                        }
+                    };
+                    
+                    console.log(`📨 Message from ${messageData.from.username || messageData.from.firstName}: ${messageData.text.substring(0, 50)}...`);
+                    await handlePolledMessage(botToken, messageData);
+                }
+                
+                // Process edited message updates
+                if (update.edited_message && update.edited_message.text) {
+                    console.log(`📝 Edited message in chat ${update.edited_message.chat.id}`);
+                }
+                
+                // Process callback queries
+                if (update.callback_query) {
+                    console.log(`🔔 Callback query: ${update.callback_query.data}`);
+                }
+            }
+        } catch (error) {
+            console.error(`Polling error for bot ${botToken.substring(0, 10)}:`, error.message);
+        }
+    }
+
+    // Start polling with interval
+    const intervalId = setInterval(poll, 100); // Poll frequently for responsiveness
+    pollingIntervals.set(botToken, intervalId);
+    
+    // Initial poll
+    poll();
+}
+
+async function handlePolledMessage(botToken, messageData) {
+    const { chatId, messageId, text, from } = messageData;
+    
+    // Handle commands
+    if (text.startsWith('/')) {
+        if (text === '/start') {
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `👋 Welcome! I'm your AI-powered bot.\n\nSend me any message and I'll respond using AI!`
+            );
+            return;
+        } else if (text === '/help') {
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `🤖 <b>Available Commands:</b>\n\n/start - Start conversation\n/help - Show this help\n/reset - Reset conversation`
+            );
+            return;
+        } else if (text === '/reset') {
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `🔄 Conversation reset! How can I help you?`
+            );
+            return;
+        }
+    }
+    
+    // Send typing indicator and process with AI
+    await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: chatId,
+            action: 'typing'
+        })
+    });
+    
+    // Process with AI
+    const result = await processMessage(botToken, from.id, text);
+    
+    if (result.error) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `⚠️ <b>Error:</b>\n${result.error}`
+        );
+    } else {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `✨ <b>Response:</b>\n\n${result.response}`,
+            messageId
+        );
+    }
+}
+
+function stopPolling(botToken) {
+    if (pollingIntervals.has(botToken)) {
+        clearInterval(pollingIntervals.get(botToken));
+        pollingIntervals.delete(botToken);
+        console.log(`⏹️ Stopped polling for bot: ${botToken.substring(0, 10)}...`);
+    }
+}
+
+function stopAllPolling() {
+    for (const [token, intervalId] of pollingIntervals) {
+        clearInterval(intervalId);
+        console.log(`⏹️ Stopped polling for bot: ${token.substring(0, 10)}...`);
+    }
+    pollingIntervals.clear();
 }
 
 // Send animated thinking indicator to Telegram user
@@ -284,7 +436,7 @@ async function handleRequest(req, res) {
             req.on('end', async () => {
                 try {
                     const data = JSON.parse(body);
-                    const { name, server, model, apiKey, botToken, systemPrompt, webhookUrl } = data;
+                    const { name, server, model, apiKey, botToken, systemPrompt, webhookUrl, usePolling } = data;
                     
                     // Validate bot token
                     const botInfo = await getBotInfo(botToken);
@@ -309,7 +461,7 @@ async function handleRequest(req, res) {
                         return;
                     }
 
-                    // Set webhook
+                    // Set webhook if URL provided
                     if (webhookUrl) {
                         await setWebhook(botToken, webhookUrl);
                     }
@@ -322,8 +474,14 @@ async function handleRequest(req, res) {
                         apiKey,
                         systemPrompt,
                         webhookUrl,
+                        usePolling: !webhookUrl || usePolling, // Auto-polling if no webhook
                         createdAt: new Date().toISOString()
                     });
+
+                    // Auto-start polling if no webhook URL or explicitly requested
+                    if (!webhookUrl || usePolling) {
+                        startPolling(botToken);
+                    }
 
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
@@ -334,7 +492,63 @@ async function handleRequest(req, res) {
                             username: botInfo.result.username,
                             server,
                             model
-                        }
+                        },
+                        mode: (!webhookUrl || usePolling) ? 'polling' : 'webhook',
+                        message: (!webhookUrl || usePolling) 
+                            ? 'Bot registered with auto-polling mode (no public URL needed!)' 
+                            : 'Bot registered with webhook mode'
+                    }));
+                } catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: error.message }));
+                }
+            });
+            return;
+        }
+
+        // Start polling for a specific bot
+        if (pathname === '/api/bots/start-polling' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { botToken } = JSON.parse(body);
+                    
+                    if (!botConfigs.has(botToken)) {
+                        res.writeHead(404, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Bot not registered' }));
+                        return;
+                    }
+
+                    startPolling(botToken);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true, 
+                        message: 'Polling started for bot' 
+                    }));
+                } catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: error.message }));
+                }
+            });
+            return;
+        }
+
+        // Stop polling for a specific bot
+        if (pathname === '/api/bots/stop-polling' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { botToken } = JSON.parse(body);
+                    
+                    stopPolling(botToken);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true, 
+                        message: 'Polling stopped for bot' 
                     }));
                 } catch (error) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -479,7 +693,28 @@ const server = http.createServer(handleRequest);
 server.listen(PORT, () => {
     console.log(`🤖 Telegram Bot Maker API Server running on port ${PORT}`);
     console.log(`📡 Webhook endpoint: /webhook/{botToken}`);
+    console.log(`🔄 Polling endpoints: /api/bots/start-polling, /api/bots/stop-polling`);
     console.log(`🔧 Health check: /health`);
+    console.log(`\n✨ Auto-polling is enabled by default (no webhook URL needed!)`);
 });
 
-module.exports = { server, processMessage, botConfigs };
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down...');
+    stopAllPolling();
+    server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n🛑 Shutting down...');
+    stopAllPolling();
+    server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
+});
+
+module.exports = { server, processMessage, botConfigs, startPolling, stopPolling };

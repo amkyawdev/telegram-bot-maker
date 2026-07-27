@@ -102,30 +102,28 @@ const ApiConfig = {
 
                 <div class="form-group">
                     <label class="form-label">
-                        <i class="bi bi-link-45deg"></i> Webhook URL <span class="badge bg-warning text-dark">Required</span>
+                        <i class="bi bi-link-45deg"></i> Webhook URL <span class="badge bg-secondary">Optional</span>
                     </label>
                     <div class="input-wrapper">
                         <input 
                             type="text"
                             class="form-control"
                             v-model="webhookUrl"
-                            placeholder="https://your-server.com/webhook/your-bot-token"
+                            placeholder="Leave empty for auto-polling (recommended)"
                         >
                     </div>
                     <small class="form-hint">
-                        Your server's webhook endpoint. Format: <code>{base-url}/webhook/{bot-token}</code>
+                        Leave empty for <strong>auto-polling mode</strong> (no server deployment needed!)
                     </small>
                 </div>
 
                 <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>Setup Instructions:</strong>
-                    <ol class="mb-0 mt-2">
-                        <li>Deploy your server to a public URL (e.g., Vercel, Railway, Render)</li>
-                        <li>Copy your server URL and append <code>/webhook/</code> plus your bot token</li>
-                        <li>Paste the full webhook URL above</li>
-                        <li>Save configuration to register your bot</li>
-                    </ol>
+                    <i class="bi bi-lightbulb-fill"></i>
+                    <strong>🤖 Auto Mode (Recommended)</strong>
+                    <p class="mb-0 mt-2">
+                        Leave Webhook URL empty! The bot will use <strong>auto-polling</strong> - 
+                        no public server needed, works on your local machine!
+                    </p>
                 </div>
 
                 <div class="form-actions">
@@ -133,7 +131,7 @@ const ApiConfig = {
                         <i class="bi bi-plug"></i> Test Connection
                     </button>
                     <button class="btn btn-primary" @click="saveConfig" :disabled="!isValid">
-                        <i class="bi bi-check-lg"></i> Save Configuration
+                        <i class="bi bi-check-lg"></i> Save & Start Bot
                     </button>
                 </div>
 
@@ -145,6 +143,14 @@ const ApiConfig = {
                         <strong>{{ testStatus.success ? 'Connection Successful!' : 'Connection Failed' }}</strong>
                         <p>{{ testStatus.message }}</p>
                     </div>
+                </div>
+
+                <div class="polling-status" v-if="isPolling">
+                    <div class="status-indicator">
+                        <span class="pulse"></span>
+                        <span>🤖 Bot is running (Auto-Polling Mode)</span>
+                    </div>
+                    <small>Messages are being received automatically</small>
                 </div>
             </div>
         </div>
@@ -162,6 +168,24 @@ const ApiConfig = {
         const showToken = ref(false);
         const testStatus = ref(null);
         const isTesting = ref(false);
+        const isPolling = ref(false);
+        const serverUrl = ref('');
+
+        // Get server URL for API calls
+        const getServerUrl = () => {
+            return serverUrl.value || window.location.origin;
+        };
+
+        // Check if bot is running (polling)
+        const checkPollingStatus = async () => {
+            if (!botToken.value) return;
+            try {
+                const response = await fetch(`${getServerUrl()}/api/bots?token=${botToken.value}`);
+                isPolling.value = response.ok;
+            } catch (e) {
+                isPolling.value = false;
+            }
+        };
 
         // Separate free and paid models
         const freeModels = computed(() => {
@@ -176,7 +200,7 @@ const ApiConfig = {
             return apiKey.value.length > 10 && selectedModel.value && botToken.value.length > 10;
         });
 
-        const saveConfig = () => {
+        const saveConfig = async () => {
             const config = storage.getApiConfig() || {};
             config.openrouter = {
                 apiKey: apiKey.value,
@@ -186,6 +210,32 @@ const ApiConfig = {
                 webhookUrl: webhookUrl.value
             };
             storage.saveApiConfig(config);
+
+            // Try to register bot with server (for auto-polling)
+            try {
+                const usePolling = !webhookUrl.value;
+                const response = await fetch(`${getServerUrl()}/api/bots/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: botUsername.value,
+                        server: 'openrouter',
+                        model: selectedModel.value,
+                        apiKey: apiKey.value,
+                        botToken: botToken.value,
+                        systemPrompt: '',
+                        webhookUrl: webhookUrl.value,
+                        usePolling: usePolling
+                    })
+                });
+                
+                if (response.ok) {
+                    isPolling.value = true;
+                }
+            } catch (e) {
+                console.log('Server not available for auto-registration');
+            }
+
             emit('navigate', 'prompt');
         };
 
@@ -236,6 +286,10 @@ const ApiConfig = {
             showToken,
             testStatus,
             isTesting,
+            isPolling,
+            serverUrl,
+            getServerUrl,
+            checkPollingStatus,
             isValid,
             freeModels,
             paidModels,
