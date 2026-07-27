@@ -88,7 +88,7 @@ const ApiConfig = {
                 </div>
 
                 <div class="form-actions">
-                    <button class="btn btn-secondary" @click="testConnection">
+                    <button class="btn btn-secondary" @click="testConnection" :disabled="isTesting">
                         <i class="bi bi-plug"></i> Test Connection
                     </button>
                     <button class="btn btn-primary" @click="saveConfig" :disabled="!isValid">
@@ -118,6 +118,7 @@ const ApiConfig = {
         const showApiKey = ref(false);
         const showToken = ref(false);
         const testStatus = ref(null);
+        const isTesting = ref(false);
 
         const isValid = computed(() => {
             return apiKey.value.length > 10 && selectedModel.value && botToken.value.length > 10;
@@ -135,16 +136,37 @@ const ApiConfig = {
         };
 
         const testConnection = async () => {
+            if (!apiKey.value || !selectedModel.value) {
+                testStatus.value = { success: false, message: "Please enter API key and select a model" };
+                return;
+            }
             testStatus.value = null;
-            // Simulated test
-            setTimeout(() => {
-                testStatus.value = {
-                    success: apiKey.value.length > 10 && selectedModel.value,
-                    message: apiKey.value.length > 10 && selectedModel.value 
-                        ? 'API key and model validated successfully!' 
-                        : 'Please enter valid API key and select a model'
-                };
-            }, 1000);
+            isTesting.value = true;
+            try {
+                let testUrl = "";
+                const headers = {};
+                if (currentServer.value === "gemini") {
+                    testUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey.value;
+                } else if (currentServer.value === "claude") {
+                    testUrl = "https://api.anthropic.com/v1/messages";
+                    headers["Content-Type"] = "application/json";
+                    headers["x-api-key"] = apiKey.value;
+                    headers["anthropic-version"] = "2023-06-01";
+                } else {
+                    const endpoints = { openai: "api.openai.com/v1/models", deepseek: "api.deepseek.com/v1/models", openrouter: "openrouter.ai/api/v1/models", grok: "api.x.ai/v1/models" };
+                    testUrl = "https://" + endpoints[currentServer.value];
+                    headers["Authorization"] = "Bearer " + apiKey.value;
+                }
+                const response = await fetch(testUrl, { method: currentServer.value === "claude" ? "POST" : "GET", headers });
+                if (response.ok) {
+                    testStatus.value = { success: true, message: servers[currentServer.value].name + " API connected!" };
+                } else {
+                    testStatus.value = { success: false, message: "Invalid API key or connection failed" };
+                }
+            } catch (error) {
+                testStatus.value = { success: false, message: "Network error: " + error.message };
+            }
+            isTesting.value = false;
         };
 
         // Load existing config
@@ -168,6 +190,7 @@ const ApiConfig = {
             showApiKey,
             showToken,
             testStatus,
+            isTesting,
             isValid,
             saveConfig,
             testConnection
