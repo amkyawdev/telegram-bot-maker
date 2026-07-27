@@ -1,73 +1,4 @@
 const AI_MODELS = {
-    gemini: {
-        name: 'Gemini',
-        iconClass: 'bi-gem',
-        iconColor: '#4285f4',
-        apiKeyPlaceholder: 'Enter your Google AI API Key',
-        models: [
-            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
-            { id: 'gemini-2.0-flash-thinking-exp-1219', name: 'Gemini 2.0 Flash Thinking' },
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-            { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-            { id: 'gemini-1.5-pro-exp', name: 'Gemini 1.5 Pro Experimental' },
-            { id: 'gemini-exp-1206', name: 'Gemini 1.0 Pro' },
-            { id: 'learnlm-1.5-pro-experimental', name: 'LearnLM 1.5 Pro' }
-        ],
-        apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
-        testEndpoint: '/v1beta/models?key='
-    },
-    claude: {
-        name: 'Claude',
-        iconClass: 'bi-person-badge',
-        iconColor: '#d4a574',
-        apiKeyPlaceholder: 'Enter your Anthropic API Key',
-        models: [
-            { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-            { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
-            { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku' },
-            { id: 'claude-3-opus-latest', name: 'Claude 3 Opus' },
-            { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' }
-        ],
-        apiEndpoint: 'https://api.anthropic.com/v1/messages',
-        testEndpoint: '/v1/models'
-    },
-    openai: {
-        name: 'OpenAI',
-        iconClass: 'bi-robot',
-        iconColor: '#10a37f',
-        apiKeyPlaceholder: 'Enter your OpenAI API Key',
-        models: [
-            { id: 'gpt-4o', name: 'GPT-4o' },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-            { id: 'gpt-4o-mini-high', name: 'GPT-4o Mini High' },
-            { id: 'chatgpt-4o-latest', name: 'ChatGPT-4o Latest' },
-            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
-            { id: 'gpt-4-turbo-2024-04-09', name: 'GPT-4 Turbo (Apr 2024)' },
-            { id: 'gpt-4', name: 'GPT-4' },
-            { id: 'gpt-4-0613', name: 'GPT-4 (Jun 2023)' },
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
-            { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16K' }
-        ],
-        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-        testEndpoint: '/v1/models'
-    },
-    deepseek: {
-        name: 'DeepSeek',
-        iconClass: 'bi-cpu',
-        iconColor: '#0066cc',
-        apiKeyPlaceholder: 'Enter your DeepSeek API Key',
-        models: [
-            { id: 'deepseek-chat', name: 'DeepSeek Chat V3' },
-            { id: 'deepseek-chat-v3-0324', name: 'DeepSeek V3 (Mar 2024)' },
-            { id: 'deepseek-coder', name: 'DeepSeek Coder V2' },
-            { id: 'deepseek-coder-v2-lite-instruct', name: 'DeepSeek Coder V2 Lite' },
-            { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' },
-            { id: 'deepseek-chat-v3-32k', name: 'DeepSeek Chat V3 32K' }
-        ],
-        apiEndpoint: 'https://api.deepseek.com/v1/chat/completions',
-        testEndpoint: '/v1/models'
-    },
     openrouter: {
         name: 'OpenRouter',
         iconClass: 'bi-globe',
@@ -86,11 +17,10 @@ const AI_MODELS = {
             { id: 'qwen/qwen-2-7b-instruct', name: 'Qwen 2 7B ⭐FREE' },
             // ⭐ FREE Models - Tier 3
             { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat ⭐FREE' },
-            { id: 'microsoft Phi-3-mini-128k-instruct', name: 'Phi-3 Mini ⭐FREE' },
+            { id: 'microsoft/phi-3-mini-128k-instruct', name: 'Phi-3 Mini ⭐FREE' },
             { id: 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO', name: 'Nous Hermes 2 ⭐FREE' },
             { id: 'allenai/OLMo-7B-Instruct', name: 'OLMo 7B ⭐FREE' },
             { id: 'databricks/dbrx-instruct', name: 'DBRX Instruct ⭐FREE' },
-            { id: 'stabilityai/stable-diffusion-3-medium', name: 'SD3 Medium ⭐FREE' },
             // 💰 Paid Models
             { id: 'openai/gpt-4o', name: 'GPT-4o (Paid)' },
             { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo (Paid)' },
@@ -103,22 +33,6 @@ const AI_MODELS = {
             { id: 'cohere/command-r-plus', name: 'Command R+ (Paid)' }
         ],
         apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-        testEndpoint: '/v1/models'
-    },
-    grok: {
-        name: 'Grok',
-        iconClass: 'bi-lightning-charge',
-        iconColor: '#f97316',
-        apiKeyPlaceholder: 'Enter your xAI API Key',
-        models: [
-            { id: 'grok-2-1212', name: 'Grok-2' },
-            { id: 'grok-2-mini-1212', name: 'Grok-2 Mini' },
-            { id: 'grok-beta', name: 'Grok Beta' },
-            { id: 'grok-1', name: 'Grok-1' },
-            { id: 'grok-2-vision-1212', name: 'Grok-2 Vision' },
-            { id: 'grok-1.5', name: 'Grok-1.5' }
-        ],
-        apiEndpoint: 'https://api.x.ai/v1/chat/completions',
         testEndpoint: '/v1/models'
     }
 };

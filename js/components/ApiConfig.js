@@ -12,47 +12,36 @@ const ApiConfig = {
                 </h1>
             </div>
 
-            <!-- Server Tabs -->
-            <div class="server-tabs">
-                <button 
-                    v-for="(server, key) in servers" 
-                    :key="key"
-                    class="tab-btn"
-                    :class="{ active: currentServer === key }"
-                    @click="currentServer = key"
-                >
-                    <i :class="server.iconClass" :style="{ color: server.iconColor }"></i>
-                    {{ server.name }}
-                </button>
-            </div>
-
             <!-- Config Form -->
-            <div class="config-card" v-if="servers[currentServer]">
+            <div class="config-card" v-if="server">
                 <div class="card-header">
                     <div class="server-logo-icon">
-                        <i :class="servers[currentServer].iconClass" :style="{ color: servers[currentServer].iconColor }"></i>
+                        <i :class="server.iconClass" :style="{ color: server.iconColor }"></i>
                     </div>
                     <div class="server-info">
-                        <h3>{{ servers[currentServer].name }}</h3>
-                        <p>{{ servers[currentServer].apiKeyPlaceholder }}</p>
+                        <h3>{{ server.name }}</h3>
+                        <p>{{ server.apiKeyPlaceholder }}</p>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">
-                        <i class="bi bi-key"></i> API Key
+                        <i class="bi bi-key"></i> OpenRouter API Key
                     </label>
                     <div class="input-wrapper">
                         <input 
                             :type="showApiKey ? 'text' : 'password'"
                             class="form-control"
                             v-model="apiKey"
-                            placeholder="Enter your API key"
+                            placeholder="sk-or-v1-..."
                         >
                         <button class="toggle-btn" @click="showApiKey = !showApiKey">
                             <i :class="showApiKey ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
                         </button>
                     </div>
+                    <small class="form-hint">
+                        Get your key from <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -61,9 +50,16 @@ const ApiConfig = {
                     </label>
                     <select class="form-select" v-model="selectedModel">
                         <option value="">Choose a model...</option>
-                        <option v-for="model in servers[currentServer].models" :key="model.id" :value="model.id">
-                            {{ model.name }}
-                        </option>
+                        <optgroup label="⭐ FREE Models - Best">
+                            <option v-for="model in freeModels" :key="model.id" :value="model.id">
+                                {{ model.name }}
+                            </option>
+                        </optgroup>
+                        <optgroup label="💰 Paid Models">
+                            <option v-for="model in paidModels" :key="model.id" :value="model.id">
+                                {{ model.name }}
+                            </option>
+                        </optgroup>
                     </select>
                 </div>
 
@@ -109,9 +105,8 @@ const ApiConfig = {
         </div>
     `,
     setup(props, { emit }) {
-        const servers = AI_MODELS;
         const storage = useStorage();
-        const currentServer = ref(props.serverKey || 'gemini');
+        const server = AI_MODELS.openrouter;
         const apiKey = ref('');
         const selectedModel = ref('');
         const botToken = ref('');
@@ -120,13 +115,22 @@ const ApiConfig = {
         const testStatus = ref(null);
         const isTesting = ref(false);
 
+        // Separate free and paid models
+        const freeModels = computed(() => {
+            return server.models.filter(m => m.name.includes('FREE'));
+        });
+
+        const paidModels = computed(() => {
+            return server.models.filter(m => !m.name.includes('FREE'));
+        });
+
         const isValid = computed(() => {
             return apiKey.value.length > 10 && selectedModel.value && botToken.value.length > 10;
         });
 
         const saveConfig = () => {
             const config = storage.getApiConfig() || {};
-            config[currentServer.value] = {
+            config.openrouter = {
                 apiKey: apiKey.value,
                 model: selectedModel.value,
                 botToken: botToken.value
@@ -148,25 +152,24 @@ const ApiConfig = {
             testStatus.value = null;
             isTesting.value = true;
             await new Promise(r => setTimeout(r, 1500));
-            testStatus.value = { success: true, message: servers[currentServer.value].name + " API key format validated!" };
+            testStatus.value = { success: true, message: "OpenRouter API key format validated!" };
             isTesting.value = false;
         };
 
         // Load existing config
         const loadConfig = () => {
             const config = storage.getApiConfig();
-            if (config && config[currentServer.value]) {
-                apiKey.value = config[currentServer.value].apiKey || '';
-                selectedModel.value = config[currentServer.value].model || '';
-                botToken.value = config[currentServer.value].botToken || '';
+            if (config && config.openrouter) {
+                apiKey.value = config.openrouter.apiKey || '';
+                selectedModel.value = config.openrouter.model || '';
+                botToken.value = config.openrouter.botToken || '';
             }
         };
 
         loadConfig();
 
         return {
-            servers,
-            currentServer,
+            server,
             apiKey,
             selectedModel,
             botToken,
@@ -175,6 +178,8 @@ const ApiConfig = {
             testStatus,
             isTesting,
             isValid,
+            freeModels,
+            paidModels,
             saveConfig,
             testConnection
         };

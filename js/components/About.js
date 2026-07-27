@@ -17,8 +17,8 @@ const About = {
                     <i class="bi bi-robot"></i>
                 </div>
                 <h2>Telegram Bot Maker</h2>
-                <p class="version">Version 1.0.0</p>
-                <p class="tagline">Create intelligent Telegram bots powered by AI</p>
+                <p class="version">Version 2.0.0</p>
+                <p class="tagline">Create intelligent Telegram bots powered by OpenRouter AI</p>
             </div>
 
             <!-- Features -->
@@ -29,10 +29,10 @@ const About = {
                 <div class="feature-grid">
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <i class="bi bi-cpu"></i>
+                            <i class="bi bi-globe"></i>
                         </div>
-                        <h3>Multi-AI Support</h3>
-                        <p>6 AI providers including Gemini, Claude, OpenAI, DeepSeek, OpenRouter, and Grok</p>
+                        <h3>20+ AI Models</h3>
+                        <p>Access Claude, Gemini, GPT-4 and more through OpenRouter</p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -58,19 +58,34 @@ const About = {
                 </div>
             </div>
 
-            <!-- Supported AI -->
+            <!-- OpenRouter Info -->
             <div class="section">
                 <h2 class="section-title">
-                    <i class="bi bi-globe"></i> Supported AI Providers
+                    <i class="bi bi-globe" style="color: #a855f7;"></i> OpenRouter
                 </h2>
                 <div class="provider-list">
-                    <div class="provider-item" v-for="(server, key) in servers" :key="key">
-                        <img :src="server.icon" :alt="server.name" class="provider-icon">
+                    <div class="provider-item">
+                        <div class="provider-icon-wrapper">
+                            <i class="bi bi-globe" style="color: #a855f7;"></i>
+                        </div>
                         <div class="provider-info">
-                            <h4>{{ server.name }}</h4>
-                            <span>{{ server.models.length }} models available</span>
+                            <h4>OpenRouter</h4>
+                            <span>{{ servers.openrouter.models.length }} models available</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Free Models -->
+            <div class="section">
+                <h2 class="section-title">
+                    <i class="bi bi-gift"></i> FREE Models
+                </h2>
+                <div class="free-models">
+                    <div class="free-model-badge">Claude 3.5 Sonnet</div>
+                    <div class="free-model-badge">Gemini 2.0 Flash</div>
+                    <div class="free-model-badge">GPT-4o Mini</div>
+                    <div class="free-model-badge">Llama 3.1 8B</div>
                 </div>
             </div>
 

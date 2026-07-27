@@ -1,22 +1,20 @@
 # Telegram Bot Maker - AI Powered
 
-Create intelligent Telegram bots powered by cutting-edge AI services with an easy-to-use web interface.
+Create intelligent Telegram bots powered by OpenRouter AI with an easy-to-use web interface.
 
-![Telegram Bot Maker](https://img.shields.io/badge/Version-1.0.0-blue)
+![Telegram Bot Maker](https://img.shields.io/badge/Version-2.0.0-blue)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## 🌟 Features
 
-- **Multiple AI Providers**: Support for 6 major AI services
-  - Google Gemini
-  - Anthropic Claude
-  - OpenAI (GPT-4, GPT-3.5)
-  - DeepSeek
-  - OpenRouter
-  - xAI Grok
+- **OpenRouter AI**: Access 20+ AI models through a single API
+  - Claude 3.5 Sonnet (FREE)
+  - Gemini 2.0 Flash (FREE)
+  - GPT-4o Mini (FREE)
+  - Many more free and paid models
 
-- **Easy Configuration**: Simple API key management for all AI providers
+- **Easy Configuration**: Simple API key management
 - **Custom System Prompts**: Built-in templates and custom prompt editor
 - **Bot Management**: Create, edit, and delete multiple bots
 - **Connection Testing**: Verify API keys and connections
@@ -29,48 +27,23 @@ Create intelligent Telegram bots powered by cutting-edge AI services with an eas
 
 - A modern web browser (Chrome, Firefox, Safari, Edge)
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
-- API keys from your preferred AI providers
+- OpenRouter API Key
 
 ### Installation
 
 1. Clone or download this repository
 2. Open `index.html` in your web browser
-3. Configure your API keys in the "API Config" section
+3. Configure your OpenRouter API key in the "API Config" section
 4. Create your first AI-powered bot!
 
-### AI Provider Setup
+### OpenRouter Setup
 
-#### Google Gemini
-1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create an API key
-3. Copy the key to the Gemini API Key field
-
-#### Anthropic Claude
-1. Visit [Anthropic Console](https://console.anthropic.com/)
-2. Navigate to API Keys section
-3. Create a new API key
-4. Copy the key to the Claude API Key field
-
-#### OpenAI
-1. Visit [OpenAI API Keys](https://platform.openai.com/api-keys)
-2. Create a new secret key
-3. Copy the key to the OpenAI API Key field
-
-#### DeepSeek
-1. Visit [DeepSeek Platform](https://platform.deepseek.com/)
-2. Create an account and get API key
-3. Copy the key to the DeepSeek API Key field
-
-#### OpenRouter
 1. Visit [OpenRouter](https://openrouter.ai/keys)
-2. Create an account and generate API key
-3. Copy the key to the OpenRouter API Key field
+2. Create a free account
+3. Generate an API key
+4. Copy the key to the OpenRouter API Key field
 
-#### xAI Grok
-1. Visit [xAI](https://x.ai/)
-2. Sign up for access
-3. Get your API key
-4. Copy the key to the Grok API Key field
+Many popular models are available for FREE on OpenRouter!
 
 ### Creating a Telegram Bot
 
@@ -95,20 +68,19 @@ telegram-bot-maker/
 │   ├── app.js              # Vue app initialization
 │   ├── components/
 │   │   ├── Loader.js       # Loading screen component
-│   │   ├── MainPage.js     # Home page with AI servers
-│   │   ├── ApiConfig.js    # API configuration page
+│   │   ├── MainPage.js     # Home page
+│   │   ├── ApiConfig.js    # OpenRouter API configuration page
 │   │   ├── SystemPrompt.js # Prompt templates & editor
 │   │   ├── BotList.js      # Bot management page
 │   │   └── About.js        # About & documentation page
 │   ├── composables/
 │   │   ├── useStorage.js   # LocalStorage operations
-│   │   ├── useApiTest.js   # API connection testing
+│   │   ├── useApiTest.js   # OpenRouter API connection testing
 │   │   └── useBotManager.js # Bot CRUD operations
 │   └── data/
-│       └── models.js        # AI models configuration
+│       └── models.js        # OpenRouter models configuration
 ├── assets/
-│   ├── icons/              # SVG icons for AI providers
-│   └── images/             # Demo images
+│   └── icons/              # SVG icons
 └── vendor/                 # Third-party libraries
     ├── vue.js              # Vue.js 3
     ├── bootstrap.js         # Bootstrap JS
@@ -145,7 +117,7 @@ General purpose conversational AI assistant. Provides:
 - **Styling**: Custom CSS + Bootstrap utilities
 - **Icons**: Bootstrap Icons
 - **Storage**: Browser LocalStorage
-- **API Integration**: REST API calls to AI providers
+- **API Integration**: OpenRouter REST API
 
 ## 📝 Usage Tips
 
@@ -154,15 +126,16 @@ General purpose conversational AI assistant. Provides:
 - Keys are stored locally in your browser
 - Consider using environment variables for production deployments
 
-### Rate Limits
-- Each AI provider has rate limits
-- Check provider documentation for details
-- Consider using OpenRouter for unified access
+### Free Models on OpenRouter
+- Claude 3.5 Sonnet (Best overall)
+- Gemini 2.0 Flash (Fast & capable)
+- GPT-4o Mini (OpenAI's best small model)
+- Many more available
 
 ### Cost Management
-- Monitor your API usage
-- Set budget alerts with providers
-- Use appropriate model tiers
+- Start with FREE models to test
+- Monitor usage at openrouter.ai
+- Set budget limits on OpenRouter
 
 ## 🤝 Contributing
 

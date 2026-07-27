@@ -1,6 +1,6 @@
 /**
  * Telegram Bot Maker - Backend Server
- * Handles Telegram webhooks and AI API communication
+ * Handles Telegram webhooks and OpenRouter AI API communication
  */
 
 const http = require('http');
@@ -10,93 +10,8 @@ const crypto = require('crypto');
 // In-memory bot configurations (in production, use a database)
 const botConfigs = new Map();
 
-// AI API endpoints and handlers
+// OpenRouter AI handler
 const AI_HANDLERS = {
-    gemini: async (apiKey, model, messages) => {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: messages.map(m => ({
-                        role: m.role === 'user' ? 'user' : 'model',
-                        parts: [{ text: m.content }]
-                    })),
-                    generationConfig: {
-                        temperature: 0.9,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 2048
-                    }
-                })
-            }
-        );
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Gemini API error');
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
-    },
-
-    claude: async (apiKey, model, messages) => {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-                model,
-                max_tokens: 2048,
-                messages: messages.map(m => ({
-                    role: m.role === 'user' ? 'user' : 'assistant',
-                    content: m.content
-                }))
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Claude API error');
-        return data.content?.[0]?.text || 'No response';
-    },
-
-    openai: async (apiKey, model, messages) => {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.9,
-                max_tokens: 2048
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'OpenAI API error');
-        return data.choices?.[0]?.message?.content || 'No response';
-    },
-
-    deepseek: async (apiKey, model, messages) => {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.9,
-                max_tokens: 2048
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'DeepSeek API error');
-        return data.choices?.[0]?.message?.content || 'No response';
-    },
-
     openrouter: async (apiKey, model, messages) => {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -115,25 +30,6 @@ const AI_HANDLERS = {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error?.message || 'OpenRouter API error');
-        return data.choices?.[0]?.message?.content || 'No response';
-    },
-
-    grok: async (apiKey, model, messages) => {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.9,
-                max_tokens: 2048
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || 'Grok API error');
         return data.choices?.[0]?.message?.content || 'No response';
     }
 };

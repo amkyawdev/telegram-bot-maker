@@ -3,7 +3,7 @@ const { createApp, ref, computed, onMounted } = Vue;
 const app = createApp({
     setup() {
         const currentPage = ref('loader');
-        const serverKey = ref('gemini');
+        const serverKey = ref('openrouter');
 
         const navigate = (page, server = null) => {
             currentPage.value = page;
