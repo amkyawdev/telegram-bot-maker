@@ -361,11 +361,18 @@
             const systemPrompt = document.getElementById('systemPrompt').value.trim();
             
             // Validation
-            if (!apiKey || apiKey.length < 20) {
-                showToast('Invalid OpenRouter API Key', 'error');
+            if (!apiKey || !apiKey.startsWith('sk-')) {
+                log('OpenRouter API Key must start with "sk-"', 'error');
+                showToast('Invalid OpenRouter API Key! Must start with "sk-"', 'error');
+                return;
+            }
+            if (apiKey.length < 30) {
+                log('OpenRouter API Key too short', 'error');
+                showToast('Invalid OpenRouter API Key!', 'error');
                 return;
             }
             if (!botToken || botToken.length < 20) {
+                log('Telegram Bot Token invalid', 'error');
                 showToast('Invalid Telegram Bot Token', 'error');
                 return;
             }
@@ -397,17 +404,21 @@
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://github.com/amkyawdev/telegram-bot-maker',
+                        'X-Title': 'Telegram AI Bot'
                     },
                     body: JSON.stringify({
                         model: aiModel,
-                        messages: [{ role: 'user', content: 'Hi' }],
+                        messages: [{ role: 'user', content: 'Say "OK"' }],
                         max_tokens: 10
                     })
                 });
+                
+                const errData = await orRes.json();
+                
                 if (!orRes.ok) {
-                    const err = await orRes.json();
-                    log('OpenRouter error: ' + (err.error?.message || 'Unknown'), 'error');
+                    log('OpenRouter error: ' + (errData.error?.message || JSON.stringify(errData)), 'error');
                     showToast('Invalid OpenRouter API Key!', 'error');
                     return;
                 }
@@ -524,10 +535,14 @@
         
         // Get AI response
         async function getAIResponse(userMessage) {
-            const apiKey = document.getElementById('apiKey').value;
+            const apiKey = document.getElementById('apiKey').value.trim();
             const aiModel = document.getElementById('aiModel').value;
-            const systemPrompt = document.getElementById('systemPrompt').value || 
+            const systemPrompt = document.getElementById('systemPrompt').value.trim() || 
                 'You are a helpful, friendly AI assistant.';
+            
+            if (!apiKey || !apiKey.startsWith('sk-')) {
+                return '⚠️ Please configure your OpenRouter API Key first!';
+            }
             
             try {
                 const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -536,7 +551,7 @@
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json',
                         'HTTP-Referer': 'https://telegram-bot-maker.app',
-                        'X-Title': 'Telegram AI Bot'
+                        'X-Title': 'Telegram AI Bot Standalone'
                     },
                     body: JSON.stringify({
                         model: aiModel,
@@ -552,12 +567,15 @@
                 const data = await res.json();
                 
                 if (!res.ok) {
-                    return '⚠️ AI Error: ' + (data.error?.message || 'Unknown error');
+                    const errorMsg = data.error?.message || data.error?.code || 'Unknown error';
+                    console.error('OpenRouter Error:', data);
+                    return `⚠️ AI Error: ${errorMsg}`;
                 }
                 
-                return data.choices?.[0]?.message?.content || 'No response';
+                return data.choices?.[0]?.message?.content || 'No response from AI';
             } catch (e) {
-                return '⚠️ Error: ' + e.message;
+                console.error('Fetch Error:', e);
+                return '⚠️ Connection Error: ' + e.message;
             }
         }
         
