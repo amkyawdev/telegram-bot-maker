@@ -226,12 +226,23 @@
                     <i class="bi bi-cpu"></i> AI Model
                 </label>
                 <select class="form-select" id="aiModel">
-                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet ⭐ FREE</option>
-                    <option value="google/gemini-3.5-flash">Gemini 3.5 Flash ⭐ FREE</option>
-                    <option value="openai/gpt-4o-mini">GPT-4o Mini ⭐ FREE</option>
-                    <option value="anthropic/claude-3-haiku">Claude 3 Haiku ⭐ FREE</option>
-                    <option value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite ⭐ FREE</option>
+                    <optgroup label="⭐ OpenAI Models (Using your key)">
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    </optgroup>
+                    <optgroup label="⭐ OpenRouter FREE Models">
+                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet ⭐ FREE</option>
+                        <option value="google/gemini-3.5-flash">Gemini 3.5 Flash ⭐ FREE</option>
+                        <option value="openai/gpt-4o-mini">GPT-4o Mini ⭐ FREE</option>
+                        <option value="anthropic/claude-3-haiku">Claude 3 Haiku ⭐ FREE</option>
+                        <option value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite ⭐ FREE</option>
+                    </optgroup>
                 </select>
+                <small class="text-secondary">
+                    OpenAI key → Use GPT-4o models<br>
+                    OpenRouter key (sk-or-v1-) → Use FREE models
+                </small>
             </div>
             
             <div class="mb-3">
@@ -360,14 +371,14 @@
             const aiModel = document.getElementById('aiModel').value;
             const systemPrompt = document.getElementById('systemPrompt').value.trim();
             
-            // Validation - OpenRouter keys start with sk-or-v1- or sk-
+            // Validation - Support both OpenRouter (sk-or-v1-) and OpenAI (sk-proj-, sk-)
             if (!apiKey || apiKey.length < 20) {
-                log('OpenRouter API Key is too short', 'error');
-                showToast('Invalid OpenRouter API Key!', 'error');
+                log('❌ API Key is too short', 'error');
+                showToast('Invalid API Key!', 'error');
                 return;
             }
             if (!botToken || botToken.length < 20) {
-                log('Telegram Bot Token invalid', 'error');
+                log('❌ Telegram Bot Token invalid', 'error');
                 showToast('Invalid Telegram Bot Token', 'error');
                 return;
             }
@@ -376,12 +387,12 @@
             saveConfig();
             
             // Test bot token
-            log('Testing Telegram bot token...');
+            log('🔄 Testing Telegram bot token...');
             try {
                 const testRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
                 const testData = await testRes.json();
                 if (!testData.ok) {
-                    log('Invalid bot token: ' + testData.description, 'error');
+                    log('❌ Invalid bot token: ' + testData.description, 'error');
                     showToast('Invalid Telegram Bot Token!', 'error');
                     return;
                 }
@@ -392,8 +403,6 @@
                 return;
             }
             
-            // Skip API test - go straight to polling
-            // API will be tested when first message comes
             log('✅ Configuration saved');
             log('💡 Bot is running! Send a message to test AI response.');
             
@@ -509,20 +518,34 @@
                 'You are a helpful, friendly AI assistant.';
             
             if (!apiKey || apiKey.length < 20) {
-                return '⚠️ OpenRouter API Key not configured!';
+                return '⚠️ API Key not configured!';
             }
             
             log(`🤖 Calling AI: ${aiModel}...`);
             
+            // Determine API endpoint based on key prefix
+            let apiEndpoint = 'https://api.openai.com/v1/chat/completions';
+            
+            // If OpenRouter key (sk-or-v1-), use OpenRouter endpoint
+            if (apiKey.startsWith('sk-or-v1-')) {
+                apiEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
+            }
+            
             try {
-                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                const headers = {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                // Add OpenRouter-specific headers if using OpenRouter
+                if (apiEndpoint.includes('openrouter')) {
+                    headers['HTTP-Referer'] = 'https://github.com/amkyawdev/telegram-bot-maker';
+                    headers['X-Title'] = 'Telegram AI Bot';
+                }
+                
+                const res = await fetch(apiEndpoint, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://github.com/amkyawdev/telegram-bot-maker',
-                        'X-Title': 'Telegram AI Bot'
-                    },
+                    headers: headers,
                     body: JSON.stringify({
                         model: aiModel,
                         messages: [
@@ -542,13 +565,13 @@
                     
                     // Handle common errors
                     if (errorMsg.includes('provider') || errorMsg.includes('Provider')) {
-                        return '⚠️ AI Provider Error. Please check your API key and try again.\n\nTips:\n• Verify your OpenRouter key is valid\n• Check if the model is available\n• Try a different model';
+                        return '⚠️ AI Provider Error. Please check your API key and try again.';
                     }
                     if (errorMsg.includes('Invalid') || errorMsg.includes('invalid')) {
-                        return '⚠️ Invalid API Key! Please check your OpenRouter API key.';
+                        return '⚠️ Invalid API Key! Please check your API key.';
                     }
-                    if (errorMsg.includes('quota') || errorMsg.includes('limit')) {
-                        return '⚠️ API quota exceeded. Please check your OpenRouter account.';
+                    if (errorMsg.includes('quota') || errorMsg.includes('limit') || errorMsg.includes('exceeded')) {
+                        return '⚠️ API quota exceeded. Please check your account.';
                     }
                     
                     return `⚠️ AI Error: ${errorMsg}`;
