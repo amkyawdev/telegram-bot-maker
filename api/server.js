@@ -1,19 +1,113 @@
 /**
  * Telegram Bot Maker - Backend Server
  * Handles Telegram webhooks and OpenRouter AI API communication
- * Supports both Webhook and Polling modes
+ * Uses Upstash Redis for persistent bot configuration storage
  */
 
 const http = require('http');
 const url = require('url');
-const crypto = require('crypto');
 
-// In-memory bot configurations (in production, use a database)
-const botConfigs = new Map();
+// Upstash Redis setup (for Vercel/serverless compatibility)
+let redis = null;
+let useMemoryFallback = true;
 
-// Polling state
-let pollingIntervals = new Map();
-const POLLING_TIMEOUT = 50; // Telegram long polling timeout in seconds
+async function initRedis() {
+    if (redis) return redis;
+    
+    const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+    const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
+        try {
+            const { Redis } = await import('@upstash/redis');
+            redis = new Redis({
+                url: UPSTASH_REDIS_REST_URL,
+                token: UPSTASH_REDIS_REST_TOKEN,
+            });
+            useMemoryFallback = false;
+            console.log('✅ Upstash Redis connected');
+            return redis;
+        } catch (e) {
+            console.log('⚠️ Redis connection failed, using memory fallback');
+        }
+    } else {
+        console.log('ℹ️ UPSTASH_REDIS_REST_URL not set, using memory fallback');
+    }
+    
+    useMemoryFallback = true;
+    return null;
+}
+
+// In-memory fallback storage
+const memoryStore = {
+    configs: new Map(),
+    async get(token) {
+        return this.configs.get(token) || null;
+    },
+    async set(token, data) {
+        this.configs.set(token, data);
+        return true;
+    },
+    async del(token) {
+        this.configs.delete(token);
+        return true;
+    },
+    async keys() {
+        return Array.from(this.configs.keys());
+    }
+};
+
+// Unified storage interface
+const storage = {
+    async getBotConfig(botToken) {
+        if (useMemoryFallback) {
+            return memoryStore.get(botToken);
+        }
+        const data = await redis.get(`bot:${botToken}`);
+        return data ? JSON.parse(data) : null;
+    },
+    
+    async setBotConfig(botToken, config) {
+        if (useMemoryFallback) {
+            return memoryStore.set(botToken, config);
+        }
+        await redis.set(`bot:${botToken}`, JSON.stringify(config));
+        return true;
+    },
+    
+    async deleteBotConfig(botToken) {
+        if (useMemoryFallback) {
+            return memoryStore.del(botToken);
+        }
+        await redis.del(`bot:${botToken}`);
+        return true;
+    },
+    
+    async getAllBots() {
+        if (useMemoryFallback) {
+            const bots = [];
+            for (const [token, config] of memoryStore.configs) {
+                bots.push({ token, ...config });
+            }
+            return bots;
+        }
+        const tokens = await redis.smembers('bot_tokens');
+        const bots = [];
+        for (const token of tokens) {
+            const config = await redis.get(`bot:${token}`);
+            if (config) {
+                bots.push({ token, ...JSON.parse(config) });
+            }
+        }
+        return bots;
+    },
+    
+    async addBotToken(token) {
+        if (!useMemoryFallback) {
+            await redis.sadd('bot_tokens', token);
+        }
+    }
+};
 
 // Detect API type based on key prefix
 function getApiEndpoint(apiKey) {
@@ -55,18 +149,25 @@ async function callAI(apiKey, model, messages) {
 
 // Process user message and get AI response
 async function processMessage(botToken, userId, message) {
-    const config = botConfigs.get(botToken);
+    const config = await storage.getBotConfig(botToken);
     if (!config) {
         console.log(`Bot config not found for token: ${botToken.substring(0, 10)}...`);
-        return { error: 'Bot not configured on server. Please register your bot first.' };
+        return { error: 'Bot not configured. Please register your bot at the web app.' };
     }
 
     const { server, model, apiKey, systemPrompt, name } = config;
     console.log(`Processing message for bot: ${name} (${server}/${model})`);
 
     try {
+        // Replace template variables
+        let prompt = systemPrompt || 'You are a helpful AI assistant.';
+        prompt = prompt.replace(/\{\{user_name\}\}/g, `User ${userId}`);
+        prompt = prompt.replace(/\{\{user_id\}\}/g, String(userId));
+        prompt = prompt.replace(/\{\{bot_name\}\}/g, name || 'Bot');
+        prompt = prompt.replace(/\{\{date\}\}/g, new Date().toLocaleDateString());
+
         const messages = [
-            { role: 'system', content: systemPrompt || 'You are a helpful AI assistant.' },
+            { role: 'system', content: prompt },
             { role: 'user', content: message }
         ];
         
@@ -101,228 +202,6 @@ async function sendTelegramMessage(botToken, chatId, text, replyToMessageId = nu
     return response.json();
 }
 
-// Telegram Long Polling - Auto Webhook Alternative
-async function startPolling(botToken) {
-    if (pollingIntervals.has(botToken)) {
-        console.log(`Polling already started for bot: ${botToken.substring(0, 10)}...`);
-        return;
-    }
-
-    let offset = 0;
-    console.log(`🚀 Starting auto-polling for bot: ${botToken.substring(0, 10)}...`);
-
-    async function poll() {
-        try {
-            const response = await fetch(
-                `https://api.telegram.org/bot${botToken}/getUpdates?offset=${offset}&timeout=${POLLING_TIMEOUT}`,
-                { method: 'GET' }
-            );
-            
-            if (!response.ok) {
-                console.error(`Polling error for bot ${botToken.substring(0, 10)}: HTTP ${response.status}`);
-                return;
-            }
-            
-            const data = await response.json();
-            
-            if (!data.ok || !data.result || data.result.length === 0) {
-                return; // No updates, continue polling
-            }
-
-            // Process each update
-            for (const update of data.result) {
-                offset = update.update_id + 1;
-                
-                // Process message updates
-                if (update.message && update.message.text) {
-                    const messageData = {
-                        type: 'message',
-                        chatId: update.message.chat.id,
-                        messageId: update.message.message_id,
-                        text: update.message.text,
-                        from: {
-                            id: update.message.from.id,
-                            firstName: update.message.from.first_name,
-                            username: update.message.from.username
-                        }
-                    };
-                    
-                    console.log(`📨 Message from ${messageData.from.username || messageData.from.firstName}: ${messageData.text.substring(0, 50)}...`);
-                    await handlePolledMessage(botToken, messageData);
-                }
-                
-                // Process edited message updates
-                if (update.edited_message && update.edited_message.text) {
-                    console.log(`📝 Edited message in chat ${update.edited_message.chat.id}`);
-                }
-                
-                // Process callback queries
-                if (update.callback_query) {
-                    console.log(`🔔 Callback query: ${update.callback_query.data}`);
-                }
-            }
-        } catch (error) {
-            console.error(`Polling error for bot ${botToken.substring(0, 10)}:`, error.message);
-        }
-    }
-
-    // Start polling with interval
-    const intervalId = setInterval(poll, 100); // Poll frequently for responsiveness
-    pollingIntervals.set(botToken, intervalId);
-    
-    // Initial poll
-    poll();
-}
-
-async function handlePolledMessage(botToken, messageData) {
-    const { chatId, messageId, text, from } = messageData;
-    
-    // Handle commands
-    if (text.startsWith('/')) {
-        if (text === '/start') {
-            await sendTelegramMessage(
-                botToken,
-                chatId,
-                `👋 Welcome! I'm your AI-powered bot.\n\nSend me any message and I'll respond using AI!`
-            );
-            return;
-        } else if (text === '/help') {
-            await sendTelegramMessage(
-                botToken,
-                chatId,
-                `🤖 <b>Available Commands:</b>\n\n/start - Start conversation\n/help - Show this help\n/reset - Reset conversation`
-            );
-            return;
-        } else if (text === '/reset') {
-            await sendTelegramMessage(
-                botToken,
-                chatId,
-                `🔄 Conversation reset! How can I help you?`
-            );
-            return;
-        }
-    }
-    
-    // Send typing indicator and process with AI
-    await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            chat_id: chatId,
-            action: 'typing'
-        })
-    });
-    
-    // Process with AI
-    const result = await processMessage(botToken, from.id, text);
-    
-    if (result.error) {
-        await sendTelegramMessage(
-            botToken,
-            chatId,
-            `⚠️ <b>Error:</b>\n${result.error}`
-        );
-    } else {
-        await sendTelegramMessage(
-            botToken,
-            chatId,
-            `✨ <b>Response:</b>\n\n${result.response}`,
-            messageId
-        );
-    }
-}
-
-function stopPolling(botToken) {
-    if (pollingIntervals.has(botToken)) {
-        clearInterval(pollingIntervals.get(botToken));
-        pollingIntervals.delete(botToken);
-        console.log(`⏹️ Stopped polling for bot: ${botToken.substring(0, 10)}...`);
-    }
-}
-
-function stopAllPolling() {
-    for (const [token, intervalId] of pollingIntervals) {
-        clearInterval(intervalId);
-        console.log(`⏹️ Stopped polling for bot: ${token.substring(0, 10)}...`);
-    }
-    pollingIntervals.clear();
-}
-
-// Send animated thinking indicator to Telegram user
-async function sendThinkingIndicator(botToken, chatId) {
-    // First send "typing" action
-    await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            chat_id: chatId,
-            action: 'typing'
-        })
-    });
-    
-    // Send animated thinking message with animation frames
-    const thinkingFrames = [
-        '🤖 <b>AI is thinking</b> ⏳\n\n<code>Loading...</code>',
-        '🤖 <b>AI is thinking</b> 🔄\n\n<code>Processing...</code>',
-        '🤖 <b>AI is thinking</b> ⚙️\n\n<code>Generating response...</code>'
-    ];
-    
-    // Send initial thinking message
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            chat_id: chatId,
-            text: thinkingFrames[0],
-            parse_mode: 'HTML'
-        })
-    });
-    
-    const data = await response.json();
-    return data.result?.message_id || null;
-}
-
-// Update thinking message to show progress
-async function updateThinkingMessage(botToken, chatId, messageId, frame = 1) {
-    const thinkingFrames = [
-        '🤖 <b>AI is thinking</b> ⏳\n\n<code>Loading...</code>',
-        '🤖 <b>AI is thinking</b> 🔄\n\n<code>Processing...</code>',
-        '🤖 <b>AI is thinking</b> ⚙️\n\n<code>Generating response...</code>',
-        '🤖 <b>AI is thinking</b> ✨\n\n<code>Finalizing...</code>'
-    ];
-    
-    try {
-        await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId,
-                text: thinkingFrames[frame] || thinkingFrames[0],
-                parse_mode: 'HTML'
-            })
-        });
-    } catch (error) {
-        console.error('Error updating thinking message:', error);
-    }
-}
-
-// Delete a message (thinking indicator)
-async function deleteMessage(botToken, chatId, messageId) {
-    try {
-        await fetch(`https://api.telegram.org/bot${botToken}/deleteMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                message_id: messageId
-            })
-        });
-    } catch (error) {
-        console.error('Error deleting message:', error);
-    }
-}
-
 // Set webhook for Telegram bot
 async function setWebhook(botToken, webhookUrl) {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
@@ -342,12 +221,12 @@ async function getBotInfo(botToken) {
 // Parse Telegram update
 function parseUpdate(body) {
     try {
-        const update = typeof body === 'string' ? JSON.parse(body) : body;
+        const update = JSON.parse(body);
         
-        // Handle direct message
         if (update.message && update.message.text) {
             return {
                 type: 'message',
+                updateId: update.update_id,
                 chatId: update.message.chat.id,
                 messageId: update.message.message_id,
                 text: update.message.text,
@@ -359,53 +238,50 @@ function parseUpdate(body) {
             };
         }
         
-        // Handle edited message
-        if (update.edited_message && update.edited_message.text) {
-            return {
-                type: 'edited_message',
-                chatId: update.edited_message.chat.id,
-                text: update.edited_message.text
-            };
-        }
-        
-        // Handle callback query
-        if (update.callback_query) {
-            return {
-                type: 'callback_query',
-                id: update.callback_query.id,
-                chatId: update.callback_query.message?.chat.id,
-                data: update.callback_query.data
-            };
-        }
-        
         return null;
-    } catch (error) {
-        console.error('Error parsing update:', error);
+    } catch {
         return null;
     }
 }
 
-// Verify Telegram webhook signature
-function verifyTelegramSignature(secretToken, body) {
-    if (!secretToken) return true; // Skip verification if no token
-    
-    const secret = crypto.createHash('sha256').update(secretToken).digest();
-    const hash = crypto.createHmac('sha256', secret)
-        .update(body)
-        .digest('hex');
-    
-    return true; // In production, compare hash with Telegram's provided hash
+// Handle bot command
+async function handleBotCommand(botToken, chatId, text, from) {
+    if (text === '/start') {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `👋 Welcome! I'm your AI-powered bot.\n\n` +
+            `Send me any message and I'll respond using AI!\n\n` +
+            `Created with ❤️ by Telegram Bot Maker`
+        );
+        return true;
+    } else if (text === '/help') {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `🤖 <b>Available Commands:</b>\n\n` +
+            `/start - Start conversation\n` +
+            `/help - Show this help\n` +
+            `/reset - Reset conversation`
+        );
+        return true;
+    } else if (text === '/reset') {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `🔄 Conversation reset! How can I help you?`
+        );
+        return true;
+    }
+    return false;
 }
 
-// Handle incoming requests
+// Main request handler
 async function handleRequest(req, res) {
-    const parsedUrl = url.parse(req.url, true);
-    const pathname = parsedUrl.pathname;
-    
-    // Set CORS headers
+    // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Telegram-Bot-Api-Secret-Token');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     if (req.method === 'OPTIONS') {
         res.writeHead(200);
@@ -414,24 +290,27 @@ async function handleRequest(req, res) {
     }
 
     try {
+        // Initialize Redis (async, don't wait)
+        initRedis().catch(() => {});
+
+        const parsedUrl = url.parse(req.url, true);
+        const pathname = parsedUrl.pathname;
+        const query = parsedUrl.query;
+
         // Health check endpoint
         if (pathname === '/health') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+            res.end(JSON.stringify({ 
+                status: 'ok', 
+                storage: useMemoryFallback ? 'memory' : 'redis',
+                timestamp: new Date().toISOString()
+            }));
             return;
         }
 
-        // Get bot configuration
+        // List all registered bots
         if (pathname === '/api/bots' && req.method === 'GET') {
-            const bots = [];
-            for (const [token, config] of botConfigs) {
-                bots.push({
-                    name: config.name,
-                    server: config.server,
-                    model: config.model,
-                    status: 'active'
-                });
-            }
+            const bots = await storage.getAllBots();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(bots));
             return;
@@ -444,7 +323,7 @@ async function handleRequest(req, res) {
             req.on('end', async () => {
                 try {
                     const data = JSON.parse(body);
-                    const { name, server, model, apiKey, botToken, systemPrompt, webhookUrl, usePolling } = data;
+                    const { name, server, model, apiKey, botToken, systemPrompt, webhookUrl } = data;
                     
                     // Validate bot token
                     const botInfo = await getBotInfo(botToken);
@@ -466,26 +345,23 @@ async function handleRequest(req, res) {
                         return;
                     }
 
-                    // Set webhook if URL provided
-                    if (webhookUrl) {
-                        await setWebhook(botToken, webhookUrl);
-                    }
-
                     // Store bot configuration
-                    botConfigs.set(botToken, {
+                    await storage.setBotConfig(botToken, {
                         name: name || botInfo.result.first_name,
+                        username: botInfo.result.username,
                         server,
                         model,
                         apiKey,
                         systemPrompt,
                         webhookUrl,
-                        usePolling: !webhookUrl || usePolling, // Auto-polling if no webhook
                         createdAt: new Date().toISOString()
                     });
+                    
+                    await storage.addBotToken(botToken);
 
-                    // Auto-start polling if no webhook URL or explicitly requested
-                    if (!webhookUrl || usePolling) {
-                        startPolling(botToken);
+                    // Set webhook
+                    if (webhookUrl) {
+                        await setWebhook(botToken, webhookUrl);
                     }
 
                     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -498,10 +374,7 @@ async function handleRequest(req, res) {
                             server,
                             model
                         },
-                        mode: (!webhookUrl || usePolling) ? 'polling' : 'webhook',
-                        message: (!webhookUrl || usePolling) 
-                            ? 'Bot registered with auto-polling mode (no public URL needed!)' 
-                            : 'Bot registered with webhook mode'
+                        message: 'Bot registered successfully'
                     }));
                 } catch (error) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -511,27 +384,16 @@ async function handleRequest(req, res) {
             return;
         }
 
-        // Start polling for a specific bot
-        if (pathname === '/api/bots/start-polling' && req.method === 'POST') {
+        // Delete bot
+        if (pathname.match(/^\/api\/bots\/delete$/) && req.method === 'POST') {
             let body = '';
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
                     const { botToken } = JSON.parse(body);
-                    
-                    if (!botConfigs.has(botToken)) {
-                        res.writeHead(404, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ error: 'Bot not registered' }));
-                        return;
-                    }
-
-                    startPolling(botToken);
-                    
+                    await storage.deleteBotConfig(botToken);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ 
-                        success: true, 
-                        message: 'Polling started for bot' 
-                    }));
+                    res.end(JSON.stringify({ success: true }));
                 } catch (error) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: error.message }));
@@ -540,24 +402,21 @@ async function handleRequest(req, res) {
             return;
         }
 
-        // Stop polling for a specific bot
-        if (pathname === '/api/bots/stop-polling' && req.method === 'POST') {
+        // Test AI connection
+        if (pathname === '/api/test' && req.method === 'POST') {
             let body = '';
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    const { botToken } = JSON.parse(body);
-                    
-                    stopPolling(botToken);
-                    
+                    const { apiKey, model } = JSON.parse(body);
+                    const response = await callAI(apiKey, model, [
+                        { role: 'user', content: 'Say "OK" if you can hear me.' }
+                    ]);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ 
-                        success: true, 
-                        message: 'Polling stopped for bot' 
-                    }));
+                    res.end(JSON.stringify({ success: true, response }));
                 } catch (error) {
-                    res.writeHead(500, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: error.message }));
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: error.message }));
                 }
             });
             return;
@@ -572,9 +431,6 @@ async function handleRequest(req, res) {
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {
                 try {
-                    // Verify signature if secret token provided
-                    const secretToken = req.headers['x-telegram-bot-api-secret-token'];
-                    
                     const update = parseUpdate(body);
                     if (!update) {
                         res.writeHead(200);
@@ -582,62 +438,36 @@ async function handleRequest(req, res) {
                         return;
                     }
 
-                    // Process message
-                    if (update.type === 'message') {
-                        // Skip /start and other commands for now
-                        if (update.text.startsWith('/')) {
-                            if (update.text === '/start') {
-                                await sendTelegramMessage(
-                                    botToken,
-                                    update.chatId,
-                                    `👋 Welcome! I'm your AI-powered bot.\n\nSend me any message and I'll respond using AI!`
-                                );
-                            } else if (update.text === '/help') {
-                                await sendTelegramMessage(
-                                    botToken,
-                                    update.chatId,
-                                    `🤖 <b>Available Commands:</b>\n\n/start - Start conversation\n/help - Show this help\n/reset - Reset conversation`
-                                );
-                            } else if (update.text === '/reset') {
-                                await sendTelegramMessage(
-                                    botToken,
-                                    update.chatId,
-                                    `🔄 Conversation reset! How can I help you?`
-                                );
-                            }
+                    // Handle commands
+                    if (update.text.startsWith('/')) {
+                        await handleBotCommand(botToken, update.chatId, update.text, update.from);
+                    } else {
+                        // Send typing indicator
+                        await fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: update.chatId,
+                                action: 'typing'
+                            })
+                        });
+                        
+                        // Process with AI
+                        const result = await processMessage(botToken, update.from.id, update.text);
+                        
+                        if (result.error) {
+                            await sendTelegramMessage(
+                                botToken,
+                                update.chatId,
+                                `⚠️ <b>Error:</b>\n${result.error}`
+                            );
                         } else {
-                            // Send animated thinking indicator with message ID
-                            const thinkingMsgId = await sendThinkingIndicator(botToken, update.chatId);
-                            
-                            // Update thinking animation frames while waiting for AI
-                            if (thinkingMsgId) {
-                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 1), 1000);
-                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 2), 2000);
-                                setTimeout(() => updateThinkingMessage(botToken, update.chatId, thinkingMsgId, 3), 3000);
-                            }
-                            
-                            // Process with AI
-                            const result = await processMessage(botToken, update.from.id, update.text);
-                            
-                            // Delete thinking indicator message
-                            if (thinkingMsgId) {
-                                await deleteMessage(botToken, update.chatId, thinkingMsgId);
-                            }
-                            
-                            if (result.error) {
-                                await sendTelegramMessage(
-                                    botToken,
-                                    update.chatId,
-                                    `⚠️ <b>Error:</b>\n${result.error}`
-                                );
-                            } else {
-                                await sendTelegramMessage(
-                                    botToken,
-                                    update.chatId,
-                                    `✨ <b>Response:</b>\n\n${result.response}`,
-                                    update.messageId
-                                );
-                            }
+                            await sendTelegramMessage(
+                                botToken,
+                                update.chatId,
+                                `✨ <b>Response:</b>\n\n${result.response}`,
+                                update.messageId
+                            );
                         }
                     }
 
@@ -647,35 +477,6 @@ async function handleRequest(req, res) {
                     console.error('Webhook error:', error);
                     res.writeHead(200);
                     res.end('OK');
-                }
-            });
-            return;
-        }
-
-        // Test AI connection endpoint
-        if (pathname === '/api/test' && req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk);
-            req.on('end', async () => {
-                try {
-                    const { server, apiKey, model } = JSON.parse(body);
-                    const handler = AI_HANDLERS[server];
-                    
-                    if (!handler) {
-                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ success: false, error: 'Unknown server' }));
-                        return;
-                    }
-
-                    const response = await handler(apiKey, model, [
-                        { role: 'user', content: 'Say "OK" if you can hear me.' }
-                    ]);
-
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true, response }));
-                } catch (error) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: false, error: error.message }));
                 }
             });
             return;
@@ -693,33 +494,16 @@ async function handleRequest(req, res) {
 
 // Create and start server
 const PORT = process.env.PORT || 3000;
-const server = http.createServer(handleRequest);
 
-server.listen(PORT, () => {
-    console.log(`🤖 Telegram Bot Maker API Server running on port ${PORT}`);
-    console.log(`📡 Webhook endpoint: /webhook/{botToken}`);
-    console.log(`🔄 Polling endpoints: /api/bots/start-polling, /api/bots/stop-polling`);
-    console.log(`🔧 Health check: /health`);
-    console.log(`\n✨ Auto-polling is enabled by default (no webhook URL needed!)`);
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down...');
-    stopAllPolling();
-    server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
+// Only start server if not in Vercel/serverless environment
+if (process.env.VERCEL !== '1') {
+    const server = http.createServer(handleRequest);
+    server.listen(PORT, () => {
+        console.log(`🤖 Telegram Bot Maker API Server running on port ${PORT}`);
+        console.log(`📡 Webhook endpoint: /webhook/{botToken}`);
+        console.log(`🔧 Health check: /health`);
     });
-});
+}
 
-process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down...');
-    stopAllPolling();
-    server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-    });
-});
-
-module.exports = { server, processMessage, botConfigs, startPolling, stopPolling };
+// Export for serverless
+module.exports = { handleRequest, storage };

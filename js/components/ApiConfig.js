@@ -102,28 +102,32 @@ const ApiConfig = {
 
                 <div class="form-group">
                     <label class="form-label">
-                        <i class="bi bi-link-45deg"></i> Webhook URL <span class="badge bg-secondary">Optional</span>
+                        <i class="bi bi-link-45deg"></i> Webhook URL
                     </label>
                     <div class="input-wrapper">
                         <input 
                             type="text"
                             class="form-control"
                             v-model="webhookUrl"
-                            placeholder="Leave empty for auto-polling (recommended)"
+                            :placeholder="'https://your-app.vercel.app/webhook/' + (botToken || 'YOUR_BOT_TOKEN')"
                         >
+                        <button class="btn btn-sm btn-outline-primary toggle-btn" @click="generateWebhookUrl" title="Auto-generate Webhook URL">
+                            <i class="bi bi-magic"></i>
+                        </button>
                     </div>
                     <small class="form-hint">
-                        Leave empty for <strong>auto-polling mode</strong> (no server deployment needed!)
+                        Click <strong>🔮 Auto-generate</strong> or enter manually. Format: <code>{{ window.location.origin || 'https://your-app' }}/webhook/YOUR_BOT_TOKEN</code>
                     </small>
                 </div>
 
                 <div class="alert alert-info">
-                    <i class="bi bi-lightbulb-fill"></i>
-                    <strong>🤖 Auto Mode (Recommended)</strong>
-                    <p class="mb-0 mt-2">
-                        Leave Webhook URL empty! The bot will use <strong>auto-polling</strong> - 
-                        no public server needed, works on your local machine!
-                    </p>
+                    <i class="bi bi-info-circle-fill"></i>
+                    <strong>How it works:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Enter your Telegram Bot Token</li>
+                        <li>Click <strong>🔮 Auto-generate</strong> to create the Webhook URL</li>
+                        <li>Click <strong>Save & Start Bot</strong> to register</li>
+                    </ol>
                 </div>
 
                 <div class="form-actions">
@@ -187,6 +191,13 @@ const ApiConfig = {
             }
         };
 
+        // Auto-generate webhook URL
+        const generateWebhookUrl = () => {
+            if (!botToken.value) return;
+            const baseUrl = window.location.origin;
+            webhookUrl.value = `${baseUrl}/webhook/${botToken.value}`;
+        };
+
         // Separate free and paid models
         const freeModels = computed(() => {
             return server.models.filter(m => m.name.includes('FREE'));
@@ -211,32 +222,42 @@ const ApiConfig = {
             };
             storage.saveApiConfig(config);
 
-            // Try to register bot with server (for auto-polling)
+            // Auto-generate webhook URL if empty
+            if (!webhookUrl.value) {
+                generateWebhookUrl();
+            }
+
+            // Try to register bot with server
             try {
-                const usePolling = !webhookUrl.value;
                 const response = await fetch(`${getServerUrl()}/api/bots/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name: botUsername.value,
+                        name: botUsername.value || 'My Bot',
                         server: 'openrouter',
                         model: selectedModel.value,
                         apiKey: apiKey.value,
                         botToken: botToken.value,
                         systemPrompt: '',
-                        webhookUrl: webhookUrl.value,
-                        usePolling: usePolling
+                        webhookUrl: webhookUrl.value
                     })
                 });
                 
                 if (response.ok) {
-                    isPolling.value = true;
+                    const data = await response.json();
+                    testStatus.value = { success: true, message: 'Bot registered successfully! Check Telegram.' };
+                    setTimeout(() => {
+                        emit('navigate', 'bots');
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    testStatus.value = { success: false, message: error.error || 'Registration failed' };
                 }
             } catch (e) {
-                console.log('Server not available for auto-registration');
+                console.log('Server not available:', e);
+                testStatus.value = { success: false, message: 'Server not available. Bot will work when webhook URL is configured.' };
+                emit('navigate', 'prompt');
             }
-
-            emit('navigate', 'prompt');
         };
 
         const testConnection = async () => {
@@ -290,6 +311,7 @@ const ApiConfig = {
             serverUrl,
             getServerUrl,
             checkPollingStatus,
+            generateWebhookUrl,
             isValid,
             freeModels,
             paidModels,

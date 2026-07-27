@@ -3,7 +3,13 @@
   "builds": [
     {
       "src": "api/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "api/**",
+          "node_modules/@upstash/redis/**"
+        ]
+      }
     }
   ],
   "routes": [
@@ -14,6 +20,13 @@
     {
       "src": "/webhook/(.*)",
       "dest": "/api/server.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/api/server.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

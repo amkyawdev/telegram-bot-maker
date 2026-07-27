@@ -29,35 +29,52 @@ Create intelligent Telegram bots powered by OpenRouter AI with an easy-to-use we
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - OpenRouter API Key
 
-### Option 1: Local Setup (No Server Required!)
+### Deploy to Vercel
 
-1. Clone or download this repository
-2. Open `index.html` in your web browser
-3. Configure your OpenRouter API key
-4. Go to **API Config** → Enter **Webhook URL** (see Option 2 or 3 below)
-5. Create your first AI-powered bot!
+1. Fork this repository to your GitHub account
+2. Go to [Vercel](https://vercel.com) and sign in
+3. Click **Add New** → **Project**
+4. Import your forked repository
+5. Click **Deploy**
 
-### Option 2: Deploy to Railway (Recommended for Polling)
+### ⚠️ Important: Set Up Upstash Redis (Required for Bot to Work!)
 
-Railway offers **free tier** with persistent servers - perfect for Telegram bot polling!
+Telegram bot configurations are stored in **Upstash Redis** (free tier) so they persist across Vercel serverless functions.
 
-1. Go to [Railway.app](https://railway.app) and sign up
-2. Click **New Project** → **Deploy from GitHub**
-3. Connect your GitHub repo
-4. Railway auto-detects Node.js
-5. Set environment variables:
-   - `PORT` = `3000`
-6. Get your Railway URL (e.g., `https://telegram-bot-maker.up.railway.app`)
-7. Use this URL as your **Webhook URL** in the app
+#### Step 1: Create Upstash Redis Database
 
-### Option 3: Deploy to Vercel (Webhook Mode)
+1. Go to [console.upstash.com](https://console.upstash.com)
+2. Sign up / Log in (free)
+3. Click **Create Database**
+4. Choose **Global** (low latency worldwide)
+5. Copy the **REST URL** and **REST Token**
 
-Vercel uses serverless functions - you must provide a **Webhook URL**!
+#### Step 2: Add Environment Variables to Vercel
 
-1. Deploy to Vercel via GitHub
-2. Get your Vercel deployment URL
-3. In the app, enter your **Webhook URL**: `https://your-app.vercel.app/webhook/{BOT_TOKEN}`
-4. The bot will respond via webhooks (polling won't work on Vercel)
+1. Go to your Vercel project
+2. Click **Settings** → **Environment Variables**
+3. Add these two variables:
+
+| Variable Name | Value |
+|--------------|-------|
+| `UPSTASH_REDIS_REST_URL` | Paste your Upstash REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Paste your Upstash REST Token |
+
+4. **Redeploy** your project (Deployments → Recent → Click ⋮ → Redeploy)
+
+#### Step 3: Configure Your Bot in the Web App
+
+1. Open your deployed app (e.g., `https://your-app.vercel.app`)
+2. Go to **API Config**
+3. Enter your **OpenRouter API Key** and select a model
+4. Enter your **Telegram Bot Token**
+5. Enter your **Webhook URL**:
+   ```
+   https://your-app.vercel.app/webhook/YOUR_BOT_TOKEN
+   ```
+   Replace `YOUR_BOT_TOKEN` with your actual Telegram bot token (from @BotFather)
+6. Click **Save & Start Bot**
+7. Test by sending a message to your Telegram bot!
 
 ### OpenRouter Setup
 

@@ -1,6 +1,6 @@
 {
   "name": "telegram-bot-maker",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Create intelligent Telegram bots powered by cutting-edge AI services with an easy-to-use web interface.",
   "main": "api/server.js",
   "scripts": {
@@ -27,5 +27,7 @@
     "url": "https://github.com/amkyawdev/telegram-bot-maker/issues"
   },
   "homepage": "https://github.com/amkyawdev/telegram-bot-maker#readme",
-  "dependencies": {}
+  "dependencies": {
+    "@upstash/redis": "^1.28.0"
+  }
 }
