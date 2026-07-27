@@ -106,6 +106,7 @@ const ApiConfig = {
     `,
     setup(props, { emit }) {
         const storage = useStorage();
+        const apiTest = useApiTest();
         const server = AI_MODELS.openrouter;
         const apiKey = ref('');
         const selectedModel = ref('');
@@ -144,15 +145,20 @@ const ApiConfig = {
                 testStatus.value = { success: false, message: "Please enter API key and select a model" };
                 return;
             }
-            const keyLength = apiKey.value.length;
-            if (keyLength < 20) {
+            if (apiKey.value.length < 20) {
                 testStatus.value = { success: false, message: "API key too short" };
                 return;
             }
             testStatus.value = null;
             isTesting.value = true;
-            await new Promise(r => setTimeout(r, 1500));
-            testStatus.value = { success: true, message: "OpenRouter API key format validated!" };
+            
+            try {
+                const result = await apiTest.testConnection('openrouter', apiKey.value);
+                testStatus.value = result;
+            } catch (error) {
+                testStatus.value = { success: false, message: error.message };
+            }
+            
             isTesting.value = false;
         };
 

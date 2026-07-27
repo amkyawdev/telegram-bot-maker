@@ -4,13 +4,29 @@ const useApiTest = () => {
     const testOpenRouter = async (apiKey) => {
         try {
             const response = await fetch('https://openrouter.ai/api/v1/models', {
-                headers: { 'Authorization': `Bearer ${apiKey}` }
+                headers: { 
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
             });
-            if (response.ok) {
-                const data = await response.json();
-                return { success: true, models: data.data?.length || 0 };
+            
+            const text = await response.text();
+            
+            if (!response.ok) {
+                try {
+                    const errorData = JSON.parse(text);
+                    return { success: false, error: errorData.error?.message || `HTTP ${response.status}` };
+                } catch {
+                    return { success: false, error: `HTTP ${response.status}` };
+                }
             }
-            return { success: false, error: `HTTP ${response.status}` };
+            
+            try {
+                const data = JSON.parse(text);
+                return { success: true, models: data.data?.length || 0 };
+            } catch {
+                return { success: false, error: 'Invalid response from server' };
+            }
         } catch (error) {
             return { success: false, error: error.message };
         }
